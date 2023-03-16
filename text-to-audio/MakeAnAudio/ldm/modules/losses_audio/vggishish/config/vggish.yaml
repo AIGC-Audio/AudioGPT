@@ -1,0 +1,34 @@
+seed: 1337
+log_code_state: True
+# patterns to ignore when backing up the code folder
+patterns_to_ignore: ['logs', '.git', '__pycache__']
+
+# data:
+mels_path: '/home/nvme/data/vggsound/features/melspec_10s_22050hz/'
+spec_shape: [80, 860]
+cropped_size: [80, 848]
+random_crop: False
+
+# model:
+# original vgg family except for MP is missing at the end
+# 'vggish': [64, 'MP', 128, 'MP', 256, 256, 'MP', 512, 512]
+# 'vgg11': [64, 'MP', 128, 'MP', 256, 256, 'MP', 512, 512, 'MP', 512, 512],
+# 'vgg13': [64, 64, 'MP', 128, 128, 'MP', 256, 256, 'MP', 512, 512, 'MP', 512, 512],
+# 'vgg16': [64, 64, 'MP', 128, 128, 'MP', 256, 256, 256, 'MP', 512, 512, 512, 'MP', 512, 512, 512],
+# 'vgg19': [64, 64, 'MP', 128, 128, 'MP', 256, 256, 256, 256, 'MP', 512, 512, 512, 512, 'MP', 512, 512, 512, 512],
+conv_layers: [64, 64, 'MP', 128, 128, 'MP', 256, 256, 256, 'MP', 512, 512, 512, 'MP', 512, 512, 512]
+use_bn: False
+
+# train:
+device: 'cuda:0'
+batch_size: 32
+num_workers: 0
+optimizer: adam
+betas: [0.9, 0.999]
+momentum: 0.9
+learning_rate: 3e-4
+weight_decay: 0.0001
+num_epochs: 100
+patience: 3
+logdir: './logs'
+cls_weights_in_loss: False
