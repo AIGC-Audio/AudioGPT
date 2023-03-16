@@ -1,0 +1,19 @@
+--extra-index-url https://download.pytorch.org/whl/cu113
+torch
+torch-fidelity==0.3.0
+scipy
+torchaudio>=0.13.0
+torchvision>=0.14.0
+tqdm
+omegaconf
+einops
+numpy<=1.23.5
+soundfile
+librosa
+pandas
+# transformers
+torchlibrosa
+transformers
+ftfy
+pytorch-lightning==1.5.9
+# -e git+https://github.com/CompVis/taming-transformers.git@master#egg=taming-transformers
