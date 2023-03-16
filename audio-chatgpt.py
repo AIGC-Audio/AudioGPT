@@ -230,8 +230,8 @@ class ConversationBot:
         print("Initializing AudioChatGPT")
         self.llm = OpenAI(temperature=0)
 
-        self.t2i = T2I(device="cuda:2")
-        self.t2a = T2A(device="cuda:2")
+        self.t2i = T2I(device="cuda:0")
+        self.t2a = T2A(device="cuda:0")
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
         self.tools = [
             Tool(name="Generate Image From User Input Text", func=self.t2i.inference,
@@ -309,4 +309,4 @@ if __name__ == '__main__':
         clear.click(bot.memory.clear)
         clear.click(lambda: [], None, chatbot)
         clear.click(lambda: [], None, state)
-        demo.launch(server_name="0.0.0.0", server_port=7862, share=True)
+        demo.launch(server_name="0.0.0.0", server_port=7860, share=True)
