@@ -25,15 +25,6 @@ import einops
 from pytorch_lightning import seed_everything
 import random
 from ldm.util import instantiate_from_config
-from ControlNet.cldm.model import create_model, load_state_dict
-#from ControlNet.cldm.ddim_hacked import DDIMSampler
-from ControlNet.annotator.canny import CannyDetector
-from ControlNet.annotator.mlsd import MLSDdetector
-from ControlNet.annotator.util import HWC3, resize_image
-from ControlNet.annotator.hed import HEDdetector, nms
-from ControlNet.annotator.openpose import OpenposeDetector
-from ControlNet.annotator.uniformer import UniformerDetector
-from ControlNet.annotator.midas import MidasDetector
 from pathlib import Path
 from vocoder.hifigan.modules import VocoderHifigan
 from ldm.models.diffusion.ddim import DDIMSampler
@@ -76,7 +67,7 @@ New input: {input}
 Thought: Do I need to use a tool? {agent_scratchpad}"""
 
 SAMPLE_RATE = 16000
-temp_audio_filename = "audio/2f67ff3a.wav"
+temp_audio_filename = "audio/c00d9240.wav"
 
 def cut_dialogue_history(history_memory, keep_last_n_words = 500):
     tokens = history_memory.split()
@@ -109,12 +100,6 @@ def get_new_image_name(org_img_name, func_name="update"):
         new_file_name = '{}_{}_{}_{}.png'.format(this_new_uuid, func_name, recent_prev_file_name, most_org_file_name)
     return os.path.join(head, new_file_name)
 
-def create_model(config_path, device):
-    config = OmegaConf.load(config_path)
-    OmegaConf.update(config, "model.params.cond_stage_config.params.device", device)
-    model = instantiate_from_config(config.model).cpu()
-    print(f'Loaded model config from [{config_path}]')
-    return model
 
 def initialize_model(config, ckpt, device):
     config = OmegaConf.load(config)
@@ -124,7 +109,6 @@ def initialize_model(config, ckpt, device):
     model = model.to(device)
     model.cond_stage_model.to(model.device)
     model.cond_stage_model.device = model.device
-    #print(model.device,device,model.cond_stage_model.device)
     sampler = DDIMSampler(model)
 
     return sampler
@@ -171,44 +155,6 @@ class MaskFormer:
         image_mask = Image.fromarray(visual_mask)
         return image_mask.resize(image.size)
 
-class ImageEditing:
-    def __init__(self, device):
-        print("Initializing StableDiffusionInpaint to %s" % device)
-        self.device = device
-        self.mask_former = MaskFormer(device=self.device)
-        self.inpainting = StableDiffusionInpaintPipeline.from_pretrained(        "runwayml/stable-diffusion-inpainting",).to(device)
-
-    def remove_part_of_image(self, input):
-        image_path, to_be_removed_txt = input.split(",")
-        print(f'remove_part_of_image: to_be_removed {to_be_removed_txt}')
-        return self.replace_part_of_image(f"{image_path},{to_be_removed_txt},background")
-
-    def replace_part_of_image(self, input):
-        image_path, to_be_replaced_txt, replace_with_txt = input.split(",")
-        print(f'replace_part_of_image: replace_with_txt {replace_with_txt}')
-        original_image = Image.open(image_path)
-        mask_image = self.mask_former.inference(image_path, to_be_replaced_txt)
-        updated_image = self.inpainting(prompt=replace_with_txt, image=original_image, mask_image=mask_image).images[0]
-        updated_image_path = get_new_image_name(image_path, func_name="replace-something")
-        updated_image.save(updated_image_path)
-        return updated_image_path
-
-class Pix2Pix:
-    def __init__(self, device):
-        print("Initializing Pix2Pix to %s" % device)
-        self.device = device
-        self.pipe = StableDiffusionInstructPix2PixPipeline.from_pretrained("timbrooks/instruct-pix2pix", torch_dtype=torch.float16, safety_checker=None).to(device)
-        self.pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(self.pipe.scheduler.config)
-
-    def inference(self, inputs):
-        """Change style of image."""
-        print("===>Starting Pix2Pix Inference")
-        image_path, instruct_text = inputs.split(",")[0], ','.join(inputs.split(',')[1:])
-        original_image = Image.open(image_path)
-        image = self.pipe(instruct_text,image=original_image,num_inference_steps=40,image_guidance_scale=1.2,).images[0]
-        updated_image_path = get_new_image_name(image_path, func_name="pix2pix")
-        image.save(updated_image_path)
-        return updated_image_path
 
 class T2I:
     def __init__(self, device):
@@ -229,34 +175,6 @@ class T2I:
         print(f"Processed T2I.run, text: {text}, image_filename: {image_filename}")
         return image_filename
 
-class ImageCaptioning:
-    def __init__(self, device):
-        print("Initializing ImageCaptioning to %s" % device)
-        self.device = device
-        self.processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-        self.model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base").to(self.device)
-
-    def inference(self, image_path):
-        inputs = self.processor(Image.open(image_path), return_tensors="pt").to(self.device)
-        out = self.model.generate(**inputs)
-        captions = self.processor.decode(out[0], skip_special_tokens=True)
-        return captions
-
-class BLIPVQA:
-    def __init__(self, device):
-        print("Initializing BLIP VQA to %s" % device)
-        self.device = device
-        self.processor = BlipProcessor.from_pretrained("Salesforce/blip-vqa-base")
-        self.model = BlipForQuestionAnswering.from_pretrained("Salesforce/blip-vqa-base").to(self.device)
-
-    def get_answer_from_question_and_image(self, inputs):
-        image_path, question = inputs.split(",")
-        raw_image = Image.open(image_path).convert('RGB')
-        print(F'BLIPVQA :question :{question}')
-        inputs = self.processor(raw_image, question, return_tensors="pt").to(self.device)
-        out = self.model.generate(**inputs)
-        answer = self.processor.decode(out[0], skip_special_tokens=True)
-        return answer
 
 class T2A:
     def __init__(self, device):
@@ -264,6 +182,7 @@ class T2A:
         self.device = device
         self.sampler = initialize_model('configs/text-to-audio/txt2audio_args.yaml', 'useful_ckpts/ta40multi_epoch=000085.ckpt', device=device) 
         self.vocoder = VocoderHifigan('vocoder/logs/hifi_0127',device=device)
+
     def txt2audio(self, text, seed = 55, scale = 1.5, ddim_steps = 100, n_samples = 3, W = 624, H = 80):
         prng = np.random.RandomState(seed)
         start_code = prng.randn(n_samples, self.sampler.model.first_stage_model.embed_dim, H // 8, W // 8)
@@ -288,11 +207,8 @@ class T2A:
             wav = self.vocoder.vocode(spec)
             wav_list.append((SAMPLE_RATE,wav))
         best_wav = select_best_audio(text, wav_list)
-        # audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
-        # temp_audio_filename = audio_filename
-        # soundfile.write(audio_filename, best_wav[1], samplerate = 16000)
-        # print(f"Processed T2I.run, text: {text}, audio_filename: {audio_filename}")
         return best_wav
+
     def inference(self, text, seed = 55, scale = 1.5, ddim_steps = 100, n_samples = 3, W = 624, H = 80):
         global temp_audio_filename
         melbins,mel_len = 80,624
@@ -309,43 +225,21 @@ class T2A:
         return audio_filename
 
 
-
-
-
-
 class ConversationBot:
     def __init__(self):
         print("Initializing AudioChatGPT")
         self.llm = OpenAI(temperature=0)
-        #self.edit = ImageEditing(device="cuda:0")
-        self.i2t = ImageCaptioning(device="cuda:0")
-        self.t2i = T2I(device="cuda:0")
-        #self.BLIPVQA = BLIPVQA(device="cuda:2")
-        #self.pix2pix = Pix2Pix(device="cuda:2")
-        self.t2a = T2A(device="cuda:0")
+
+        self.t2i = T2I(device="cuda:2")
+        self.t2a = T2A(device="cuda:2")
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
         self.tools = [
-            Tool(name="Get Photo Description", func=self.i2t.inference,
-                 description="useful for when you want to know what is inside the photo. receives image_path as input. "
-                             "The input to this tool should be a string, representing the image_path. "),
             Tool(name="Generate Image From User Input Text", func=self.t2i.inference,
                  description="useful for when you want to generate an image from a user input text and it saved it to a file. like: generate an image of an object or something, or generate an image that includes some objects. "
                              "The input to this tool should be a string, representing the text used to generate image. "),
-            # Tool(name="Remove Something From The Photo", func=self.edit.remove_part_of_image,
-            #      description="useful for when you want to remove and object or something from the photo from its description or location. "
-            #                  "The input to this tool should be a comma seperated string of two, representing the image_path and the object need to be removed. "),
-            # Tool(name="Replace Something From The Photo", func=self.edit.replace_part_of_image,
-            #      description="useful for when you want to replace an object from the object description or location with another object from its description. "
-            #                  "The input to this tool should be a comma seperated string of three, representing the image_path, the object to be replaced, the object to be replaced with "),
             Tool(name="Generate Audio From User Input Text", func=self.t2a.inference,
                  description="useful for when you want to generate an audio from a user input text and it saved it to a file."
                              "The input to this tool should be a string, representing the text used to generate audio.")]
-            # Tool(name="Instruct Image Using Text", func=self.pix2pix.inference,
-            #      description="useful for when you want to the style of the image to be like the text. like: make it look like a painting. or make it like a robot. "
-            #                  "The input to this tool should be a comma seperated string of two, representing the image_path and the text. "),
-            # Tool(name="Answer Question About The Image", func=self.BLIPVQA.get_answer_from_question_and_image,
-            #      description="useful for when you need an answer for a question based on an image. like: what is the background color of the last image, how many cats in this figure, what is in this figure. "
-            #                  "The input to this tool should be a comma seperated string of two, representing the image_path and the question")]
         self.agent = initialize_agent(
             self.tools,
             self.llm,
@@ -392,12 +286,6 @@ class ConversationBot:
         print("Outputs:", state)
         return state, state, txt + ' ' + image_filename + ' '
     
-    # def run_audio(self, text):
-    #     # print(temp_audio_filename)
-    #     # wav, sr = soundfile.read(temp_audio_filename)
-    #     # return wav
-    #     return temp_audio_filename
-
 
 if __name__ == '__main__':
     bot = ConversationBot()
@@ -415,12 +303,10 @@ if __name__ == '__main__':
                 btn = gr.UploadButton("Upload", file_types=["image"])
         with gr.Column():
             outaudio = gr.Audio()
-       # txt.submit(bot.run_text, [txt, state], [chatbot, state])
         txt.submit(bot.run_text, [txt, state], [chatbot, state, outaudio])
-       # txt.submit(bot.run_audio, inputs = [txt], outputs = [outaudio])
         txt.submit(lambda: "", None, txt)
         btn.upload(bot.run_image, [btn, state, txt], [chatbot, state, txt])
         clear.click(bot.memory.clear)
         clear.click(lambda: [], None, chatbot)
         clear.click(lambda: [], None, state)
-        demo.launch(server_name="0.0.0.0", server_port=7861, share=True)
+        demo.launch(server_name="0.0.0.0", server_port=7862, share=True)
