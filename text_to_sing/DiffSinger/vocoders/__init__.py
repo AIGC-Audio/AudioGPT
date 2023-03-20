@@ -1,0 +1,1 @@
+from vocoders import hifigan
