@@ -232,7 +232,7 @@ class T2S:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print("Initializing DiffSinger to %s" % device)
         self.device = device
-        exp_name = 'text_to_sing/DiffSinger/checkpoints/0831_opencpop_ds1000'
+        exp_name = 'checkpoints/0831_opencpop_ds1000'
         config= 'text_to_sing/DiffSinger/usr/configs/midi/e2e/opencpop/ds100_adj_rel.yaml'
         from utils.hparams import set_hparams
         from utils.hparams import hparams as hp
