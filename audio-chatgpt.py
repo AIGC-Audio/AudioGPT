@@ -2,8 +2,6 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_sing/DiffSinger'))
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text-to-audio/MakeAnAudio'))
 import gradio as gr
 from transformers import AutoModelForCausalLM, AutoTokenizer, CLIPSegProcessor, CLIPSegForImageSegmentation
 import torch
@@ -31,7 +29,7 @@ from pathlib import Path
 from vocoder.hifigan.modules import VocoderHifigan
 from ldm.models.diffusion.ddim import DDIMSampler
 from wav_evaluation.models.CLAPWrapper import CLAPWrapper
-from inference.svs.ds_e2e import DiffSingerE2EInfer
+import whisper
 
 AUDIO_CHATGPT_PREFIX = """Audio ChatGPT
 
@@ -70,6 +68,7 @@ Thought: Do I need to use a tool? {agent_scratchpad}"""
 
 SAMPLE_RATE = 16000
 temp_audio_filename = "audio/c00d9240.wav"
+# model = whisper.load_model("base")
 
 def cut_dialogue_history(history_memory, keep_last_n_words = 500):
     tokens = history_memory.split()
@@ -226,41 +225,28 @@ class T2A:
         print(f"Processed T2I.run, text: {text}, audio_filename: {audio_filename}")
         return audio_filename
 
-class T2S:
-    def __init__(self, device= None):
-        if device is None:
-            device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        print("Initializing DiffSinger to %s" % device)
+class ASR:
+    def __init__(self, device):
+        print("Initializing Whisper to %s" % device)
         self.device = device
-        exp_name = 'checkpoints/0831_opencpop_ds1000'
-        config= 'text_to_sing/DiffSinger/usr/configs/midi/e2e/opencpop/ds100_adj_rel.yaml'
-        from utils.hparams import set_hparams
-        from utils.hparams import hparams as hp
-        set_hparams(config= config,exp_name=exp_name, print_hparams=False)
-        self.hp = hp
-        self.pipe = DiffSingerE2EInfer(self.hp)
-
-    def inference(self, inputs):
-        global temp_audio_filename
-        key = ['text', 'notes', 'notes_duration']
-        val = inputs.split(",")
-        inp = {k:v for k,v in zip(key,val)}
-        wav = self.pipe.infer_once(inp)
-        wav *= 32767
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
-        temp_audio_filename = audio_filename
-        soundfile.write(audio_filename, wav.astype(np.int16), self.hp['audio_sample_rate'])
-        print(f"Processed T2S.run, text: {val[0]}, notes: {val[1]}, notes duration: {val[2]}, audio_filename: {audio_filename}")
-        return temp_audio_filename
+        self.model = whisper.load_model("base", device=device)
+    def inference(self, audio_path):
+        audio = whisper.load_audio(audio_path)
+        audio = whisper.pad_or_trim(audio)
+        mel = whisper.log_mel_spectrogram(audio).to(self.device)
+        _, probs = self.model.detect_language(mel)
+        #print(f"Detected language: {max(probs, key=probs.get)}")
+        options = whisper.DecodingOptions()
+        result = whisper.decode(self.model, mel, options)
+        return result.text
 
 class ConversationBot:
     def __init__(self):
         print("Initializing AudioChatGPT")
         self.llm = OpenAI(temperature=0)
-
-        self.t2i = T2I(device="cuda:0")
-        self.t2a = T2A(device="cuda:0")
-        self.t2s = T2S(device="cuda:0")
+        self.t2i = T2I(device="cuda:2")
+        self.t2a = T2A(device="cuda:2")
+        self.asr = ASR(device="cuda:2")
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
         self.tools = [
             Tool(name="Generate Image From User Input Text", func=self.t2i.inference,
@@ -269,12 +255,10 @@ class ConversationBot:
             Tool(name="Generate Audio From User Input Text", func=self.t2a.inference,
                  description="useful for when you want to generate an audio from a user input text and it saved it to a file."
                              "The input to this tool should be a string, representing the text used to generate audio."),
-            Tool(name="Generate singing voice From User Input Text", func=self.t2s.inference,
-                 description="useful for when you want to generate a piece of singing voice from its description."
-                             "The input to this tool should be a comma seperated string of three, representing the text sequence and its corresponding note and duration sequence."
-                             "Text sequence consists of Chinese characters (except for SP and AP). "
-                             "Each component of the note and duration sequence sequences should be separated by | mark."
-                             "It is necessary to ensure that note and duration sequence is of the same length. ")]
+            Tool(name="Get Audio Transcription", func=self.asr.inference,
+                 description="useful for when you want to know the text content corresponding to this audio, receives audio_path as input."
+                             "The input to this tool should be a string, representing the audio_path.")
+                             ]
         self.agent = initialize_agent(
             self.tools,
             self.llm,
@@ -295,31 +279,49 @@ class ConversationBot:
         state = state + [(text, response)]
         print("Outputs:", state)
         return state, state, temp_audio_filename
-        #return outaudio
 
-    def run_image(self, image, state, txt):
-        print("===============Running run_image =============")
-        print("Inputs:", image, state)
+    def run_audio(self, audio, state, txt):
+        print("===============Running run_audio =============")
+        print("Inputs:", audio, state)
         print("======>Previous memory:\n %s" % self.agent.memory)
-        image_filename = os.path.join('image', str(uuid.uuid4())[0:8] + ".png")
-        print("======>Auto Resize Image...")
-        img = Image.open(image.name)
-        width, height = img.size
-        ratio = min(512 / width, 512 / height)
-        width_new, height_new = (round(width * ratio), round(height * ratio))
-        img = img.resize((width_new, height_new))
-        img = img.convert('RGB')
-        img.save(image_filename, "PNG")
-        print(f"Resize image form {width}x{height} to {width_new}x{height_new}")
-        description = self.i2t.inference(image_filename)
-        Human_prompt = "\nHuman: provide a figure named {}. The description is: {}. This information helps you to understand this image, but you should use tools to finish following tasks, " \
-                       "rather than directly imagine from my description. If you understand, say \"Received\". \n".format(image_filename, description)
+        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        print("======>Auto Resize Audio...")
+        audio_load = whisper.load_audio(audio.name)
+        soundfile.write(audio_filename, audio_load, samplerate = 16000)
+        global temp_audio_filename
+        temp_audio_filename = audio_filename
+        description = self.asr.inference(audio_filename)
+        Human_prompt = "\nHuman: provide an audio named {}. The description is: {}. This information helps you to understand this audio, but you should use tools to finish following tasks, " \
+                       "rather than directly imagine from my description. If you understand, say \"Received\". \n".format(audio_filename, description)
         AI_prompt = "Received.  "
         self.agent.memory.buffer = self.agent.memory.buffer + Human_prompt + 'AI: ' + AI_prompt
-        print("======>Current memory:\n %s" % self.agent.memory)
-        state = state + [(f"![](/file={image_filename})*{image_filename}*", AI_prompt)]
+        state = state + [(f"*{audio_filename}*", AI_prompt)]
         print("Outputs:", state)
-        return state, state, txt + ' ' + image_filename + ' '
+        return state, state, txt + ' ' + audio_filename + ' ', temp_audio_filename
+
+    # def run_image(self, image, state, txt):
+    #     print("===============Running run_image =============")
+    #     print("Inputs:", image, state)
+    #     print("======>Previous memory:\n %s" % self.agent.memory)
+    #     image_filename = os.path.join('image', str(uuid.uuid4())[0:8] + ".png")
+    #     print("======>Auto Resize Image...")
+    #     img = Image.open(image.name)
+    #     width, height = img.size
+    #     ratio = min(512 / width, 512 / height)
+    #     width_new, height_new = (round(width * ratio), round(height * ratio))
+    #     img = img.resize((width_new, height_new))
+    #     img = img.convert('RGB')
+    #     img.save(image_filename, "PNG")
+    #     print(f"Resize image form {width}x{height} to {width_new}x{height_new}")
+    #     description = self.i2t.inference(image_filename)
+    #     Human_prompt = "\nHuman: provide a figure named {}. The description is: {}. This information helps you to understand this image, but you should use tools to finish following tasks, " \
+    #                    "rather than directly imagine from my description. If you understand, say \"Received\". \n".format(image_filename, description)
+    #     AI_prompt = "Received.  "
+    #     self.agent.memory.buffer = self.agent.memory.buffer + Human_prompt + 'AI: ' + AI_prompt
+    #     print("======>Current memory:\n %s" % self.agent.memory)
+    #     state = state + [(f"![](/file={image_filename})*{image_filename}*", AI_prompt)]
+    #     print("Outputs:", state)
+    #     return state, state, txt + ' ' + image_filename + ' '
     
 
 if __name__ == '__main__':
@@ -335,13 +337,15 @@ if __name__ == '__main__':
             with gr.Column(scale=0.15, min_width=0):
                 clear = gr.Button("Clear️")
             with gr.Column(scale=0.15, min_width=0):
-                btn = gr.UploadButton("Upload", file_types=["image"])
+                btn = gr.UploadButton("Upload", file_types=["audio"])
         with gr.Column():
             outaudio = gr.Audio()
         txt.submit(bot.run_text, [txt, state], [chatbot, state, outaudio])
         txt.submit(lambda: "", None, txt)
-        btn.upload(bot.run_image, [btn, state, txt], [chatbot, state, txt])
+        #btn.upload(bot.run_image, [btn, state, txt], [chatbot, state, txt])
+        btn.upload(bot.run_audio, [btn, state, txt], [chatbot, state, txt, outaudio])
         clear.click(bot.memory.clear)
         clear.click(lambda: [], None, chatbot)
         clear.click(lambda: [], None, state)
+        clear.click(lambda: [], None, outaudio)
         demo.launch(server_name="0.0.0.0", server_port=7860, share=True)
