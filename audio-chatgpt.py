@@ -2,6 +2,8 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_sing/DiffSinger'))
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text-to-audio/MakeAnAudio'))
 import gradio as gr
 from transformers import AutoModelForCausalLM, AutoTokenizer, CLIPSegProcessor, CLIPSegForImageSegmentation
 import torch
@@ -29,7 +31,7 @@ from pathlib import Path
 from vocoder.hifigan.modules import VocoderHifigan
 from ldm.models.diffusion.ddim import DDIMSampler
 from wav_evaluation.models.CLAPWrapper import CLAPWrapper
-
+from inference.svs.ds_e2e import DiffSingerE2EInfer
 
 AUDIO_CHATGPT_PREFIX = """Audio ChatGPT
 
@@ -224,6 +226,32 @@ class T2A:
         print(f"Processed T2I.run, text: {text}, audio_filename: {audio_filename}")
         return audio_filename
 
+class T2S:
+    def __init__(self, device= None):
+        if device is None:
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print("Initializing DiffSinger to %s" % device)
+        self.device = device
+        exp_name = 'text_to_sing/DiffSinger/checkpoints/0831_opencpop_ds1000'
+        config= 'text_to_sing/DiffSinger/usr/configs/midi/e2e/opencpop/ds100_adj_rel.yaml'
+        from utils.hparams import set_hparams
+        from utils.hparams import hparams as hp
+        set_hparams(config= config,exp_name=exp_name, print_hparams=False)
+        self.hp = hp
+        self.pipe = DiffSingerE2EInfer(self.hp)
+
+    def inference(self, inputs):
+        global temp_audio_filename
+        key = ['text', 'notes', 'notes_duration']
+        val = inputs.split(",")
+        inp = {k:v for k,v in zip(key,val)}
+        wav = self.pipe.infer_once(inp)
+        wav *= 32767
+        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        temp_audio_filename = audio_filename
+        soundfile.write(audio_filename, wav.astype(np.int16), self.hp['audio_sample_rate'])
+        print(f"Processed T2S.run, text: {val[0]}, notes: {val[1]}, notes duration: {val[2]}, audio_filename: {audio_filename}")
+        return temp_audio_filename
 
 class ConversationBot:
     def __init__(self):
@@ -232,6 +260,7 @@ class ConversationBot:
 
         self.t2i = T2I(device="cuda:0")
         self.t2a = T2A(device="cuda:0")
+        self.t2s = T2S(device="cuda:0")
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
         self.tools = [
             Tool(name="Generate Image From User Input Text", func=self.t2i.inference,
@@ -239,7 +268,13 @@ class ConversationBot:
                              "The input to this tool should be a string, representing the text used to generate image. "),
             Tool(name="Generate Audio From User Input Text", func=self.t2a.inference,
                  description="useful for when you want to generate an audio from a user input text and it saved it to a file."
-                             "The input to this tool should be a string, representing the text used to generate audio.")]
+                             "The input to this tool should be a string, representing the text used to generate audio."),
+            Tool(name="Generate singing voice From User Input Text", func=self.t2s.inference,
+                 description="useful for when you want to generate a piece of singing voice from its description."
+                             "The input to this tool should be a comma seperated string of three, representing the text sequence and its corresponding note and duration sequence."
+                             "Text sequence consists of Chinese characters (except for SP and AP). "
+                             "Each component of the note and duration sequence sequences should be separated by | mark."
+                             "It is necessary to ensure that note and duration sequence is of the same length. ")]
         self.agent = initialize_agent(
             self.tools,
             self.llm,
