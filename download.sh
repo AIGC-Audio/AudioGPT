@@ -25,3 +25,4 @@ wget -P data/binary/training_set https://huggingface.co/spaces/Rongjiehuang/Gene
 wget -P data/binary/training_set https://huggingface.co/spaces/Rongjiehuang/GenerSpeech/resolve/main/data/binary/training_set/train_f0s_mean_std.npy
 wget -P data/binary/training_set https://huggingface.co/spaces/Rongjiehuang/GenerSpeech/resolve/main/data/binary/training_set/word_set.json
 
+
