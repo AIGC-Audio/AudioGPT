@@ -1,0 +1,13 @@
+title: 'Rongjiehuang/GenerSpeech'
+description: |
+  Gradio demo for Rongjiehuang/GenerSpeech. To use it, simply add your audio, or click one of the examples to load them.
+article: |
+  Link to <a href='https://github.com/Rongjiehuang/GenerSpeech' style='color:blue;' target='_blank\'>Github REPO</a>
+example_inputs:
+  - |-
+    the invention of movable metal letters in the middle of the fifteenth century may justly be considered as the invention of the art of printing.
+  - |-
+    produced the block books, which were the immediate predecessors of the true printed book,
+inference_cls: inference.GenerSpeech.GenerSpeechInfer
+exp_name: GenerSpeech
+config: modules/GenerSpeech/config/prodiff_teacher.yaml

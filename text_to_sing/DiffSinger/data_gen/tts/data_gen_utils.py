@@ -343,5 +343,15 @@ def build_phone_encoder(data_dir):
     return TokenTextEncoder(None, vocab_list=phone_list, replace_oov=',')
 
 
+def build_word_encoder(data_dir):
+    word_list_file = os.path.join(data_dir, 'word_set.json')
+    word_list = json.load(open(word_list_file))
+    return TokenTextEncoder(None, vocab_list=word_list, replace_oov=',')
+
 def is_sil_phoneme(p):
     return not p[0].isalpha()
+
+
+def build_token_encoder(token_list_file):
+    token_list = json.load(open(token_list_file))
+    return TokenTextEncoder(None, vocab_list=token_list, replace_oov='<UNK>')

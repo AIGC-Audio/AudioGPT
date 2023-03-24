@@ -1,0 +1,8 @@
+base_config: egs/egs_bases/tts/vocoder/pwg.yaml
+raw_data_dir: 'data/raw/LibriTTS'
+processed_data_dir: 'data/processed/libritts'
+binary_data_dir: 'data/binary/libritts_wav'
+generator_params:
+  kernel_size: 5
+num_spk: 400
+max_samples: 20480

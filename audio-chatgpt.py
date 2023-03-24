@@ -17,6 +17,7 @@ from langchain.llms.openai import OpenAI
 import re
 import uuid
 import soundfile
+from scipy.io import wavfile
 from diffusers import StableDiffusionInpaintPipeline
 from PIL import Image
 import numpy as np
@@ -32,9 +33,16 @@ from vocoder.hifigan.modules import VocoderHifigan
 from ldm.models.diffusion.ddim import DDIMSampler
 from wav_evaluation.models.CLAPWrapper import CLAPWrapper
 from inference.svs.ds_e2e import DiffSingerE2EInfer
-
+import torch
+from inference.svs.ds_e2e import DiffSingerE2EInfer
+from inference.tts.GenerSpeech import GenerSpeechInfer
+from utils.hparams import set_hparams
+from utils.hparams import hparams as hp
+from utils.os_utils import move_file
 AUDIO_CHATGPT_PREFIX = """Audio ChatGPT
-
+AUdio ChatGPT can not directly read audios, but it has a list of tools to finish different audio synthesis tasks. Each audio will have a file name formed as "audio/xxx.wav". When talking about audios, Visual ChatGPT is very strict to the file name and will never fabricate nonexistent files. 
+AUdio ChatGPT is able to use tools in a sequence, and is loyal to the tool observation outputs rather than faking the audio content and audio file name. It will remember to provide the file name from the last tool observation, if a new audio is generated.
+Human may provide Audio ChatGPT with a description. Audio ChatGPT should generate audios according to this description rather than directly imagine from memory or yourself."
 
 TOOLS:
 ------
@@ -222,7 +230,8 @@ class T2A:
             )
         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
         temp_audio_filename = audio_filename
-        soundfile.write(audio_filename, result[1], samplerate = 16000)
+        wavfile.write(audio_filename, 16000, result[1])
+        #soundfile.write(audio_filename, result[1], samplerate = 16000)
         print(f"Processed T2I.run, text: {text}, audio_filename: {audio_filename}")
         return audio_filename
 
@@ -232,26 +241,73 @@ class T2S:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print("Initializing DiffSinger to %s" % device)
         self.device = device
-        exp_name = 'checkpoints/0831_opencpop_ds1000'
-        config= 'text_to_sing/DiffSinger/usr/configs/midi/e2e/opencpop/ds100_adj_rel.yaml'
-        from utils.hparams import set_hparams
-        from utils.hparams import hparams as hp
-        set_hparams(config= config,exp_name=exp_name, print_hparams=False)
+        self.exp_name = 'checkpoints/0831_opencpop_ds1000'
+        self.config= 'text_to_sing/DiffSinger/usr/configs/midi/e2e/opencpop/ds1000.yaml'
+        self.set_model_hparams()
+        self.pipe = DiffSingerE2EInfer(self.hp, device)
+        self.defualt_inp = {
+            'text': '你 说 你 不 SP 懂 为 何 在 这 时 牵 手 AP',
+            'notes': 'D#4/Eb4 | D#4/Eb4 | D#4/Eb4 | D#4/Eb4 | rest | D#4/Eb4 | D4 | D4 | D4 | D#4/Eb4 | F4 | D#4/Eb4 | D4 | rest',
+            'notes_duration': '0.113740 | 0.329060 | 0.287950 | 0.133480 | 0.150900 | 0.484730 | 0.242010 | 0.180820 | 0.343570 | 0.152050 | 0.266720 | 0.280310 | 0.633300 | 0.444590'
+        }
+
+    def set_model_hparams(self):
+        set_hparams(config=self.config, exp_name=self.exp_name, print_hparams=False)
         self.hp = hp
-        self.pipe = DiffSingerE2EInfer(self.hp)
 
     def inference(self, inputs):
         global temp_audio_filename
-        key = ['text', 'notes', 'notes_duration']
+        self.set_model_hparams()
         val = inputs.split(",")
-        inp = {k:v for k,v in zip(key,val)}
+        key = ['text', 'notes', 'notes_duration']
+        if inputs == '' or len(val) < len(key):
+            inp = self.defualt_inp
+        else:
+            inp = {k:v for k,v in zip(key,val)}
         wav = self.pipe.infer_once(inp)
         wav *= 32767
         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
         temp_audio_filename = audio_filename
-        soundfile.write(audio_filename, wav.astype(np.int16), self.hp['audio_sample_rate'])
-        print(f"Processed T2S.run, text: {val[0]}, notes: {val[1]}, notes duration: {val[2]}, audio_filename: {audio_filename}")
+        wavfile.write(temp_audio_filename, self.hp['audio_sample_rate'], wav.astype(np.int16))
+        print(f"Processed T2S.run, audio_filename: {audio_filename}")
         return temp_audio_filename
+
+class TTS_OOD:
+    def __init__(self, device):
+        if device is None:
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print("Initializing GenerSpeech to %s" % device)
+        self.device = device
+        self.exp_name = 'checkpoints/GenerSpeech'
+        self.config = 'text_to_sing/DiffSinger/modules/GenerSpeech/config/generspeech.yaml'
+        self.set_model_hparams()
+        self.pipe = GenerSpeechInfer(self.hp, device)
+
+    def set_model_hparams(self):
+        set_hparams(config=self.config, exp_name=self.exp_name, print_hparams=False)
+        f0_stats_fn = f'{hp["binary_data_dir"]}/train_f0s_mean_std.npy'
+        if os.path.exists(f0_stats_fn):
+            hp['f0_mean'], hp['f0_std'] = np.load(f0_stats_fn)
+            hp['f0_mean'] = float(hp['f0_mean'])
+            hp['f0_std'] = float(hp['f0_std'])
+        hp['emotion_encoder_path'] = 'checkpoints/Emotion_encoder.pt'
+        self.hp = hp
+
+    def inference(self, inputs):
+        global temp_audio_filename
+        self.set_model_hparams()
+        key = ['ref_audio', 'text']
+        val = inputs.split(",")
+        inp = {k: v for k, v in zip(key, val)}
+        wav = self.pipe.infer_once(inp)
+        wav *= 32767
+        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        temp_audio_filename = audio_filename
+        wavfile.write(temp_audio_filename, self.hp['audio_sample_rate'], wav.astype(np.int16))
+        print(
+            f"Processed GenerSpeech.run. Input text:{val[1]}. Input reference audio: {val[0]}. Output Audio_filename: {audio_filename}")
+        return temp_audio_filename
+
 
 class ConversationBot:
     def __init__(self):
@@ -261,6 +317,7 @@ class ConversationBot:
         self.t2i = T2I(device="cuda:0")
         self.t2a = T2A(device="cuda:0")
         self.t2s = T2S(device="cuda:0")
+        self.tts_ood = TTS_OOD(device="cuda:0")
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
         self.tools = [
             Tool(name="Generate Image From User Input Text", func=self.t2i.inference,
@@ -269,12 +326,18 @@ class ConversationBot:
             Tool(name="Generate Audio From User Input Text", func=self.t2a.inference,
                  description="useful for when you want to generate an audio from a user input text and it saved it to a file."
                              "The input to this tool should be a string, representing the text used to generate audio."),
-            Tool(name="Generate singing voice From User Input Text", func=self.t2s.inference,
-                 description="useful for when you want to generate a piece of singing voice from its description."
-                             "The input to this tool should be a comma seperated string of three, representing the text sequence and its corresponding note and duration sequence."
-                             "Text sequence consists of Chinese characters (except for SP and AP). "
-                             "Each component of the note and duration sequence sequences should be separated by | mark."
-                             "It is necessary to ensure that note and duration sequence is of the same length. ")]
+            Tool(
+                name="Generate speech with unseen style derived from a reference audio acoustic reference from user input text and save it to a file", func= self.tts_ood.inference,
+                description="useful for when you want to generate high-quality speech samples with unseen styles (e.g., timbre, emotion, and prosody) derived from a reference custom voice."
+                            "Like: generate a speech with unseen style derived from this custom voice. The text is xxx."
+                            "Or speak using the voice of this audio. The text is xxx."
+                            "The input to this tool should be a comma seperated string of two, representing reference audio path and input text."),
+            Tool(name="Generate singing voice From User Input Text, Note and Duration Sequence", func= self.t2s.inference,
+                 description="useful for when you want to generate a piece of singing voice (Optional: from User Input Text, Note and Duration Sequence) and save it to a file."
+                             "If Like: Generate a piece of singing voice, the input to this tool should be \"\" since there is no User Input Text, Note and Duration Sequence ."
+                             "If Like: Generate a piece of singing voice. Text: xxx, Note: xxx, Duration: xxx. "
+                             "Or Like: Generate a piece of singing voice. Text is xxx, note is xxx, duration is xxx."
+                             "The input to this tool should be a comma seperated string of three, representing text, note and duration sequence since User Input Text, Note and Duration Sequence are all provided.")]
         self.agent = initialize_agent(
             self.tools,
             self.llm,
@@ -284,6 +347,12 @@ class ConversationBot:
             return_intermediate_steps=True,
             agent_kwargs={'prefix': AUDIO_CHATGPT_PREFIX, 'format_instructions': AUDIO_CHATGPT_FORMAT_INSTRUCTIONS, 'suffix': AUDIO_CHATGPT_SUFFIX}, )
 
+    def run_file(self, file, state, txt):
+        if file.name.endswith('.wav') or file.name.endswith('.wav'):
+            return self.run_audio(file, state, txt)
+        else:
+            return self.run_image(file, state, txt)
+
     def run_text(self, text, state):
         print("===============Running run_text =============")
         print("Inputs:", text, state)
@@ -291,11 +360,11 @@ class ConversationBot:
         self.agent.memory.buffer = cut_dialogue_history(self.agent.memory.buffer, keep_last_n_words=500)
         res = self.agent({"input": text})
         print("======>Current memory:\n %s" % self.agent.memory)
+        response = re.sub('(audio/\S*wav)', lambda m: f'![](/file={m.group(0)})*{m.group(0)}*', res['output'])
         response = re.sub('(image/\S*png)', lambda m: f'![](/file={m.group(0)})*{m.group(0)}*', res['output'])
         state = state + [(text, response)]
         print("Outputs:", state)
-        return state, state, temp_audio_filename
-        #return outaudio
+        return state, state
 
     def run_image(self, image, state, txt):
         print("===============Running run_image =============")
@@ -319,7 +388,23 @@ class ConversationBot:
         print("======>Current memory:\n %s" % self.agent.memory)
         state = state + [(f"![](/file={image_filename})*{image_filename}*", AI_prompt)]
         print("Outputs:", state)
-        return state, state, txt + ' ' + image_filename + ' '
+        return state, state, f'{txt} {image_filename} '
+
+    def run_audio(self, audio, state, txt):
+        print("===============Running run_audio =============")
+        print("Inputs:", audio, state)
+        print("======>Previous memory:\n %s" % self.agent.memory)
+        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        move_file(audio.name, audio_filename)
+        Human_prompt = "\nHuman: provide an reference audio named {}. You use tools to finish following tasks, " \
+                       "rather than directly imagine from my description. If you understand, say \"Received\". \n".format(
+            audio_filename)
+        AI_prompt = "Received.  "
+        self.agent.memory.buffer = self.agent.memory.buffer + Human_prompt + 'AI: ' + AI_prompt
+        print("======>Current memory:\n %s" % self.agent.memory)
+        state = state + [(f"![](/file={audio_filename})*{audio_filename}*", AI_prompt)]
+        print("Outputs:", state)
+        return state, state, f'{txt} {audio_filename} '
     
 
 if __name__ == '__main__':
@@ -331,16 +416,18 @@ if __name__ == '__main__':
         state = gr.State([])
         with gr.Row():
             with gr.Column(scale=0.7):
-                txt = gr.Textbox(show_label=False, placeholder="Enter text and press enter, or upload an image").style(container=False)
+                txt = gr.Textbox(show_label=False, placeholder="Enter text and press enter, or upload an audio").style(
+                    container=False)
             with gr.Column(scale=0.15, min_width=0):
                 clear = gr.Button("Clear️")
             with gr.Column(scale=0.15, min_width=0):
-                btn = gr.UploadButton("Upload", file_types=["image"])
+                btn = gr.UploadButton("Upload", file_types=["audio", "image"])
+
         with gr.Column():
             outaudio = gr.Audio()
         txt.submit(bot.run_text, [txt, state], [chatbot, state, outaudio])
         txt.submit(lambda: "", None, txt)
-        btn.upload(bot.run_image, [btn, state, txt], [chatbot, state, txt])
+        btn.upload(bot.run_file, [btn, state, txt], [chatbot, state, txt])
         clear.click(bot.memory.clear)
         clear.click(lambda: [], None, chatbot)
         clear.click(lambda: [], None, state)

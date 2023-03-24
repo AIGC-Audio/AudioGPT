@@ -1,13 +1,13 @@
 import re
-from data_gen.tts.data_gen_utils import PUNCS
-from g2p_en import G2p
 import unicodedata
+
+from g2p_en import G2p
 from g2p_en.expand import normalize_numbers
 from nltk import pos_tag
 from nltk.tokenize import TweetTokenizer
 
-from data_gen.tts.txt_processors.base_text_processor import BaseTxtProcessor
-
+from data_gen.tts.txt_processors.base_text_processor import BaseTxtProcessor, register_txt_processors
+from data_gen.tts.data_gen_utils import is_sil_phoneme, PUNCS
 
 class EnG2p(G2p):
     word_tokenize = TweetTokenizer().tokenize
@@ -40,6 +40,7 @@ class EnG2p(G2p):
         return prons[:-1]
 
 
+@register_txt_processors('en')
 class TxtProcessor(BaseTxtProcessor):
     g2p = EnG2p()
 
@@ -62,17 +63,21 @@ class TxtProcessor(BaseTxtProcessor):
         return text
 
     @classmethod
-    def process(cls, txt, pre_align_args):
+    def process(cls, txt, preprocess_args):
         txt = cls.preprocess_text(txt).strip()
         phs = cls.g2p(txt)
-        phs_ = []
-        n_word_sep = 0
+        txt_struct = [[w, []] for w in txt.split(" ")]
+        i_word = 0
         for p in phs:
-            if p.strip() == '':
-                phs_ += ['|']
-                n_word_sep += 1
+            if p == ' ':
+                i_word += 1
             else:
-                phs_ += p.split(" ")
-        phs = phs_
-        assert n_word_sep + 1 == len(txt.split(" ")), (phs, f"\"{txt}\"")
-        return phs, txt
+                txt_struct[i_word][1].append(p)
+        txt_struct = cls.postprocess(txt_struct, preprocess_args)
+        return txt_struct, txt
+
+if __name__ == '__main__':
+    #t = '演唱过后，simon还进行了simon精彩的文艺演出simon.'
+    t = 'The nine the eggs, I keep.'
+    phs, txt = TxtProcessor.process(t, {'with_phsep': True, 'add_eos_bos':True})
+    print(phs, txt)

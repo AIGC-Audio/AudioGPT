@@ -1,0 +1,6 @@
+base_config:
+  - egs/egs_bases/tts/vocoder/pwg.yaml
+  - ./base_mel2wav.yaml
+
+num_spk: 400
+max_samples: 20480
