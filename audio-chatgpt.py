@@ -452,6 +452,7 @@ class ConversationBot:
         self.t2i = T2I(device="cuda:0")
         self.i2t = ImageCaptioning(device="cuda:1")
         self.t2a = T2A(device="cuda:0")
+        self.tts = TTS(device="cuda:0")
         self.t2s = T2S(device="cuda:2")
         self.i2a = I2A(device="cuda:1")
         self.asr = ASR(device="cuda:1")
@@ -469,6 +470,10 @@ class ConversationBot:
             Tool(name="Generate singing voice From User Input Text", func=self.t2s.inference,
                  description="useful for when you want to generate a piece of singing voice from its description."
                              "The input to this tool should be a comma seperated string of three, representing the text sequence and its corresponding note and duration sequence."),
+            Tool(name="Synthesize Speech Given the User Input Text", func=self.tts.inference,
+                 description="useful for when you want to convert a user input text into speech audio it saved it to a file."
+                             "The input to this tool should be a string, representing the text used to be converted to speech."),
+
             Tool(name="Generate Audio From The Image", func=self.i2a.inference,
                  description="useful for when you want to generate an audio based on an image."
                              "The input to this tool should be a string, representing the image_path. "),
