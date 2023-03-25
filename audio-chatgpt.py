@@ -36,6 +36,7 @@ from ldm.models.diffusion.ddim import DDIMSampler
 from wav_evaluation.models.CLAPWrapper import CLAPWrapper
 from inference.svs.ds_e2e import DiffSingerE2EInfer
 import whisper
+from text_to_speech.TTS_binding import TTSInference
 
 AUDIO_CHATGPT_PREFIX = """Audio ChatGPT
 
@@ -289,6 +290,19 @@ class I2A:
         print(f"Processed I2a.run, image_filename: {image}, audio_filename: {audio_filename}")
         return audio_filename
 
+class TTS:
+    def __init__(self, device=None):
+        self.inferencer = TTSInference(device)
+    
+    def inference(self, text):
+        global temp_audio_filename
+        inp = {"text": text}
+        out = self.inferencer.infer_once(inp)
+        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        temp_audio_filename = audio_filename
+        soundfile.write(audio_filename, out, samplerate = 22050)
+        return audio_filename
+    
 class T2S:
     def __init__(self, device= None):
         if device is None:
