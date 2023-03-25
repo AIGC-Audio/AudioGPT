@@ -17,7 +17,14 @@ Input Example : Generate the audio of this image<br />
 Output:<br />
 ![](i2a-2.png)<br />
 ## ASR
-First uploag your audio(.wav)<br />
+First upload your audio(.wav)<br />
 Input Example : Generate the text of this audio<br />
 Output:<br />
 ![](asr.png)<br />
+
+## Style Transfer Text-To-Speech
+First upload your audio(.wav)<br />
+Input Example : Speak using the voice of this audio. The text is "here we go".<br />
+Output:<br />
+![](style_transfer_tts.png)<br />
+

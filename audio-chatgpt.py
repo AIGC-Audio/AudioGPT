@@ -517,8 +517,8 @@ class ConversationBot:
             Tool(
                 name="Generate speech with unseen style derived from a reference audio acoustic reference from user input text and save it to a file", func= self.tts_ood.inference,
                 description="useful for when you want to generate high-quality speech samples with unseen styles (e.g., timbre, emotion, and prosody) derived from a reference custom voice."
-                            "Like: generate a speech with unseen style derived from this custom voice. The text is xxx."
-                            "Or speak using the voice of this audio. The text is xxx."
+                            "Like: Generate a speech with unseen style derived from this custom voice. The text is xxx."
+                            "Or Speak using the voice of this audio. The text is xxx."
                             "The input to this tool should be a comma seperated string of two, representing reference audio path and input text."),
             Tool(name="Generate singing voice From User Input Text, Note and Duration Sequence", func= self.t2s.inference,
                  description="useful for when you want to generate a piece of singing voice (Optional: from User Input Text, Note and Duration Sequence) and save it to a file."
