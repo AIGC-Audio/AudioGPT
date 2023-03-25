@@ -1,0 +1,12 @@
+base_config: ./tts_base.yaml
+task_cls: tasks.tts.transformer_tts.TransformerTtsTask
+binarization_args:
+  with_align: true
+attn_constraint: true
+stop_token_weight: 5.0
+prenet_dropout: 0.5
+prenet_hidden_size: 64
+hidden_size: 384
+warmup_updates: 16000
+lr: 1.0
+teacher_forcing_infer: false

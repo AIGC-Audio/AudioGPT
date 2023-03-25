@@ -1,0 +1,4 @@
+base_config:
+  - ./ps_adv.yaml
+
+task_cls: tasks.tts.synta.SyntaSpeechTask

@@ -1,0 +1,19 @@
+base_config:
+  - egs/egs_bases/tts/synta.yaml
+  - ./base_text2mel.yaml
+
+lambda_mel_adv: 0.05
+
+disc_win_num: 3
+mel_disc_hidden_size: 128
+disc_norm: in
+disc_reduction: stack
+disc_interval: 1
+disc_lr: 0.0001
+disc_start_steps: 0
+discriminator_scheduler_params:
+  gamma: 0.5
+  step_size: 40000
+discriminator_optimizer_params:
+  eps: 1.0e-06
+  weight_decay: 0.0

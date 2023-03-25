@@ -1,0 +1,12 @@
+base_config:
+  - ./ps_adv.yaml
+
+use_bert: True
+task_cls: tasks.tts.ps_adv_mlm.PortaSpeechAdvMLMTask
+
+lambda_cl: 0.01
+lambda_mlm: 0.0
+mlm_start_steps: 0
+
+cl_version: v4
+cl_ds_name: wiki

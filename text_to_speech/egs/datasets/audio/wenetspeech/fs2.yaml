@@ -1,0 +1,3 @@
+base_config:
+  - egs/egs_bases/tts/fs2.yaml
+  - ./base_text2mel.yaml

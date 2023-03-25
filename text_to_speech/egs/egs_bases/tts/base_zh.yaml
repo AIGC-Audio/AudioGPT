@@ -1,0 +1,6 @@
+base_config: ./base.yaml
+preprocess_args:
+  txt_processor: zh
+  use_tone: true
+
+word_size: 3000

@@ -1,0 +1,6 @@
+base_config:
+  - egs/egs_bases/tts/ps_adv_nlr.yaml
+  - ./base_text2mel.yaml
+
+binarizer_cls: data_gen.tts.binarizer_zh_nlr.ZhBinarizer
+binary_data_dir: 'data/binary/aishell3_nlr'

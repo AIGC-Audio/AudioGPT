@@ -1,0 +1,6 @@
+base_config:
+  - egs/egs_bases/tts/fs_adv.yaml
+  - ./base_text2mel.yaml
+
+task_cls: tasks.tts.fs_adv_aishell.FastSpeechAdvTask
+enc_ffn_kernel_size: 9
