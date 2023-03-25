@@ -1,0 +1,6 @@
+base_config: ./conformer_asr.yaml
+task_cls: tasks.asr.transformer_ctc.TransformerCTCTask
+max_tokens: 40000
+use_phone: True
+
+binarizer_cls: data_gen.tts.binarizer_zh.ZhBinarizer

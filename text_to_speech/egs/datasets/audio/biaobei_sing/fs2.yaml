@@ -1,0 +1,34 @@
+base_config:
+  - egs/datasets/audio/biaobei_sing/base_text2mel.yaml
+  - egs/egs_bases/tts/fs.yaml
+
+task_cls: tasks.tts.fs.FastSpeechTask
+use_bert: false
+use_energy_embed: false
+use_pitch_embed: true
+
+hidden_size: 256
+ffn_hidden_size: 768
+# required by clipdataset, not use by this task
+clip_mel_max_len: 128
+num_samples_in_pair: 1
+min_word_freqs: 4 # we found it filters 50% words in LJSpeech
+
+# training config
+max_tokens: 40000
+max_sentences: 48
+scheduler: rsqrt
+lr: 0.4 # edit from 1.
+max_updates: 160000
+predictor_grad: 0.02
+
+num_cache: 20000
+num_sanity_val_steps: 5
+
+# pitch extractor
+pitch_extractor_ckpt: checkpoints/1121_pitch_extractor/model_ckpt_steps_120000.ckpt
+pe_hidden_size: 256
+pe_predictor_hidden: -1
+pe_ffn_padding: SAME
+pe_predictor_kernel: 5
+pitch_norm: log

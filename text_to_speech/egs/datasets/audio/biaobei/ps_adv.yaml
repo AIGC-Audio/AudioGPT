@@ -1,0 +1,30 @@
+base_config:
+  - ./ps_flow.yaml
+
+task_cls: tasks.tts.ps_adv.PortaSpeechAdvTask
+
+lambda_mel_adv: 0.05
+
+disc_win_num: 3
+mel_disc_hidden_size: 128
+disc_norm: in
+disc_reduction: stack
+disc_interval: 1
+disc_lr: 0.0001
+disc_start_steps: 0
+discriminator_scheduler_params:
+  gamma: 0.5
+  step_size: 40000
+discriminator_optimizer_params:
+  eps: 1.0e-06
+  weight_decay: 0.0
+
+scheduler: rsqrt
+lr: 0.4 # edit from 1.
+
+# copied from graph-porta-speech repo
+predictor_grad: 0.
+
+max_tokens: 30000
+num_sanity_val_steps: 0 # steps of validation at the beginning
+ds_workers: 1

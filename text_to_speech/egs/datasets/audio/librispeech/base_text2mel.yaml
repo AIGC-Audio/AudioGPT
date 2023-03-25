@@ -1,0 +1,22 @@
+base_config: egs/egs_bases/tts/base.yaml
+ds_name: librispeech
+raw_data_dir: 'data/raw/LibriSpeech'
+processed_data_dir: 'data/processed/librispeech'
+binary_data_dir: 'data/binary/librispeech'
+preprocess_cls: egs.datasets.audio.librispeech.preprocess.LibriSpeechPreprocess
+
+binarization_args:
+  train_range: [ 871, -1 ]
+  test_range: [ 0, 523 ]
+  valid_range: [ 523, 871 ]
+test_ids: [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+            10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+            68, 70, 74, 87, 110, 172, 190, 215, 231, 294,
+            316, 324, 402, 422, 485, 500, 505, 508, 509, 519 ]
+f0_min: 80
+f0_max: 600
+vocoder_ckpt: checkpoints/hifi_librispeech
+num_valid_plots: 30
+
+max_frames: 3000
+num_spk: 999999

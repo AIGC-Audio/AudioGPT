@@ -1,0 +1,20 @@
+base_config:
+  - egs/egs_bases/tts/ps_adv_dict.yaml
+  - ./base_text2mel.yaml
+
+pre_align_args:
+  txt_processor: zh_dict
+
+use_perceptual_loss: false
+use_APC: false
+asr_strides:
+- 2
+- 2
+- 1
+
+value_embedding_size: 185
+use_word2vec: false
+exp_name: ''
+
+use_dp: false
+use_dict: false

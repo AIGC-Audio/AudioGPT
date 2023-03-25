@@ -1,0 +1,5 @@
+base_config:
+  - ./ps_adv.yaml
+
+task_cls: tasks.tts.synta.SyntaSpeechTask
+use_gae_in_prior: true

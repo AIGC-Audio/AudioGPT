@@ -1,0 +1,30 @@
+base_config:
+  - egs/egs_bases/tts/fs2s.yaml
+  - ./base_mel2wav.yaml
+binary_data_dir: 'data/binary/aishell3_fs2s'
+binarization_args:
+  with_wav: true
+  with_align: true
+  with_word: true
+  with_txt: true
+  reset_phone_dict: true
+  reset_word_dict: true
+  shuffle: true
+  trim_eos_bos: true
+  with_align: true
+  with_f0: true
+  with_f0cwt: false
+  with_linear: false
+  with_spk_embed: false
+  with_spk_id: true
+
+mel_loss_no_noise: False
+dec_inp_add_noise: False
+
+num_test_samples: 200
+mel_loss: l1
+use_pitch_embed: true
+use_uv: true
+use_energy_embed: false
+predictor_grad: 0.01
+test_num: 200

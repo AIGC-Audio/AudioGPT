@@ -1,0 +1,3 @@
+base_config:
+  - egs/egs_bases/tts/ps_flow.yaml
+  - ./base_text2mel.yaml

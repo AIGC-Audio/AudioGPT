@@ -1,0 +1,41 @@
+# task
+binary_data_dir: ''
+work_dir: '' # experiment directory.
+infer: false # infer
+amp: false
+seed: 1234
+debug: false
+save_codes: ['tasks', 'modules', 'egs', 'research']
+
+#############
+# dataset
+#############
+ds_workers: 0
+test_num: 100
+endless_ds: true
+sort_by_len: true
+
+#########
+# train and eval
+#########
+print_nan_grads: false
+load_ckpt: ''
+save_best: false
+num_ckpt_keep: 1
+clip_grad_norm: 0
+accumulate_grad_batches: 1
+tb_log_interval: 100
+num_sanity_val_steps: 5  # steps of validation at the beginning
+check_val_every_n_epoch: 10
+val_check_interval: 2000
+valid_monitor_key: 'val_loss'
+valid_monitor_mode: 'min'
+max_epochs: 1000
+max_updates: 1000000
+max_tokens: 40000
+max_sentences: 100000
+max_valid_tokens: -1
+max_valid_sentences: -1
+eval_max_batches: -1
+resume_from_checkpoint: 0
+rename_tmux: true

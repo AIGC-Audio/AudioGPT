@@ -1,0 +1,75 @@
+base_config: ./base.yaml
+task_cls: tasks.tts.fs.FastSpeechTask
+
+# model
+hidden_size: 256
+dropout: 0.0
+encoder_type: rel_fft # rel_fft|fft|tacotron|tacotron2|conformer
+decoder_type: conv # fft|rnn|conv|conformer|wn
+
+# rnn enc/dec
+encoder_K: 8
+decoder_rnn_dim: 0 # for rnn decoder, 0 -> hidden_size * 2
+
+# fft enc/dec
+enc_layers: 4
+enc_ffn_kernel_size: 9
+enc_prenet: true
+enc_pre_ln: true
+dec_layers: 4
+dec_ffn_kernel_size: 9
+num_heads: 2
+ffn_act: gelu
+ffn_hidden_size: 1024
+use_pos_embed: true
+
+# conv enc/dec
+enc_dec_norm: ln
+conv_use_pos: false
+layers_in_block: 2
+enc_dilations: [ 1, 1, 1, 1 ]
+enc_kernel_size: 5
+enc_post_net_kernel: 3
+dec_dilations: [ 1, 1, 1, 1 ] # for conv decoder
+dec_kernel_size: 5
+dec_post_net_kernel: 3
+
+# duration
+predictor_hidden: -1
+dur_predictor_kernel: 3
+dur_predictor_layers: 2
+predictor_kernel: 5
+predictor_layers: 5
+predictor_dropout: 0.5
+
+# pitch and energy
+use_pitch_embed: false
+pitch_type: frame # frame|ph|cwt
+use_uv: true
+
+# reference encoder and speaker embedding
+lambda_commit: 0.25
+ref_norm_layer: bn
+dec_inp_add_noise: false
+
+# mel
+mel_losses: l1:0.5|ssim:0.5 # l1|l2|gdl|ssim or l1:0.5|ssim:0.5
+
+# loss lambda
+lambda_f0: 1.0
+lambda_uv: 1.0
+lambda_energy: 0.1
+lambda_ph_dur: 0.1
+lambda_sent_dur: 1.0
+lambda_word_dur: 1.0
+predictor_grad: 0.1
+
+# train and eval
+warmup_updates: 4000
+max_tokens: 40000
+max_sentences: 128
+max_valid_sentences: 1
+max_updates: 160000
+use_gt_dur: false
+use_gt_f0: false
+ds_workers: 0

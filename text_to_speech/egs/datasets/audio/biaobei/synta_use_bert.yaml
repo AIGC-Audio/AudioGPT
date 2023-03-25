@@ -1,0 +1,4 @@
+base_config:
+  - ./synta.yaml
+
+use_bert: True
