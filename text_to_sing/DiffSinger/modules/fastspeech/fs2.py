@@ -253,3 +253,9 @@ class FastSpeech2(nn.Module):
     @staticmethod
     def mel_denorm(x):
         return (x + 1) * (6.3 / 2) - 5.5
+
+    def expand_states(self, h, mel2ph):
+        h = F.pad(h, [0, 0, 1, 0])
+        mel2ph_ = mel2ph[..., None].repeat([1, 1, h.shape[-1]])
+        h = torch.gather(h, 1, mel2ph_)  # [B, T, H]
+        return h

@@ -1,0 +1,12 @@
+base_config:
+  - egs/egs_bases/tts/fs2.yaml
+raw_data_dir: 'data/raw/VCTK-Corpus'
+processed_data_dir: 'data/processed/vctk'
+binary_data_dir: 'data/binary/vctk'
+pre_align_cls: egs.datasets.audio.vctk.pre_align.VCTKPreAlign
+use_spk_id: true
+test_num: 200
+num_spk: 400
+binarization_args:
+  shuffle: true
+  trim_eos_bos: true

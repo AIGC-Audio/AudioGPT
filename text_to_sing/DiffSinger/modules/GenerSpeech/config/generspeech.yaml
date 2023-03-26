@@ -1,0 +1,101 @@
+base_config:
+  - egs/egs_bases/tts/fs2.yaml
+  - egs/datasets/audio/emotion/base_text2mel.yaml
+
+task_cls: modules.GenerSpeech.task.generspeech.GenerSpeechTask
+
+# emotion encoder
+emotion_encoder_path: checkpoints/Emotion_encoder.pt # set the emotion encoder path
+
+# vocoder
+vocoder: hifigan
+vocoder_ckpt: checkpoints/trainset_hifigan
+
+# dataset
+raw_data_dir: 'data/raw/training_set'
+processed_data_dir: 'data/processed/training_set'
+binary_data_dir: 'data/binary/training_set'
+test_input_dir: ''
+
+# process
+binarizer_cls: data_gen.tts.base_binarizer_emotion.EmotionBinarizer
+audio_sample_rate: 16000
+hop_size: 256  # For 22050Hz, 275 ~= 12.5 ms (0.0125 * sample_rate)
+win_size: 1024  # For 22050Hz, 1100 ~= 50 ms (If None, win_size: fft_size) (0.05 * sample_rate)
+fmin: 80  # Set this to 55 if your speaker is male! if female, 95 should help taking off noise. (To test depending on dataset. Pitch info: male~[65, 260], female~[100, 525])
+fmax: 7600  # To be increased/reduced depending on data.
+fft_size: 1024  # Extra window size is filled with 0 paddings to match this parameter
+min_level_db: -100
+ref_level_db: 20
+
+binarization_args:
+  reset_phone_dict: true
+  reset_word_dict: true
+  shuffle: true
+  trim_eos_bos: false
+  trim_sil: false
+  with_align: true
+  with_f0: true
+  with_f0cwt: false
+  with_linear: false
+  with_spk_embed: true
+  with_spk_id: true
+  with_txt: true
+  with_wav: true
+  with_word: true
+
+preprocess_cls: egs.datasets.audio.libritts.pre_align.LibrittsPreAlign
+preprocess_args:
+  nsample_per_mfa_group: 1000
+  # text process
+  txt_processor: en
+  use_mfa: true
+  with_phsep: true
+  reset_phone_dict: true
+  reset_word_dict: true
+  add_eos_bos: true
+  # mfa
+  mfa_group_shuffle: false
+  mfa_offset: 0.02
+  # wav processors
+  wav_processors: []
+  save_sil_mask: true
+  vad_max_silence_length: 12
+
+# data
+word_dict_size: 10000
+num_spk: 500
+use_spk_embed: true
+use_spk_id: false
+use_word: true
+use_emotion: true
+use_gt_dur: false
+ref_audio: ''
+text: ''
+
+# training
+num_sanity_val_steps: -1
+max_updates: 300000
+max_sentences: 100000
+num_test_samples: 72
+
+## glow
+post_glow_hidden: 128
+post_glow_kernel_size: 3
+post_glow_n_blocks: 8
+post_glow_n_block_layers: 3
+share_wn_layers: 4
+sigmoid_scale: false
+post_share_cond_layers: false
+use_txt_cond: true
+use_latent_cond: true
+noise_scale: 0.8
+
+# prosody extractor
+lambda_commit: 0.25
+vq_start: 20500
+vae_dropout: 0.0
+nVQ: 128
+forcing: 20000
+crop: false
+predictor_grad: 1.0

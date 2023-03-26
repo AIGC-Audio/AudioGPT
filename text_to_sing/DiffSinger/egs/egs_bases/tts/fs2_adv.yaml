@@ -1,0 +1,47 @@
+base_config: ./fs2.yaml
+task_cls: tasks.tts.fs2_adv.FastSpeech2AdvTask
+
+disc_win_num: 3
+disc_interval: 1
+disc_reduction: stack # stack|sum|none
+disc_start_steps: 0
+rerun_gen: false
+
+disc_norm: in
+mel_disc_hidden_size: 128
+
+# mel decoder
+mel_gan: true
+lambda_mel_adv: 0.1
+mel_hidden_size: 256
+
+# others
+dropout: 0.05
+pitch_embed_type: 0
+enc_ffn_kernel_size: 9
+dec_ffn_kernel_size: 9
+use_cond_disc: false
+
+optimizer_adam_beta1: 0.5
+optimizer_adam_beta2: 0.999
+generator_grad_norm: 5.0    # Generator's gradient norm.
+disc_hidden_size: 128
+disc_lr: 0.0001            # Discriminator's learning rate.
+discriminator_optimizer_params:
+  eps: 1.0e-6            # Discriminator's epsilon.
+  weight_decay: 0.0      # Discriminator's weight decay coefficient.
+discriminator_scheduler_params:
+  step_size: 60000      # Discriminator's scheduler step size.
+  gamma: 0.5             # D5iscriminator's scheduler gamma.
+  # At each step size, lr will be multiplied by this parameter.
+discriminator_grad_norm: 1 # Discriminator's gradient norm.
+
+max_updates: 400000
+max_tokens: 30000
+max_sentences: 80
+val_check_interval: 2000
+
+gen_dir_name: ''
+num_ckpt_keep: 2
+save_best: false
+

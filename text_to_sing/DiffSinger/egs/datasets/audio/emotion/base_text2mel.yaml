@@ -1,0 +1,17 @@
+raw_data_dir: 'data/raw/ESD'
+processed_data_dir: 'data/processed/emotion'
+binary_data_dir: 'data/binary/emotion'
+pre_align_cls: egs.datasets.audio.emotion.pre_align.EmoPreAlign
+audio_sample_rate: 16000
+binarization_args:
+  shuffle: true
+binarizer_cls: data_gen.tts.base_binarizer_emotion.EmotionBinarizer
+use_spk_id: true
+test_num: 200
+num_spk: 10
+pitch_type: frame
+min_frames: 128
+num_test_samples: 30
+mel_loss: "ssim:0.5|l1:0.5"
+vocoder_ckpt: ''
+use_emotion: true

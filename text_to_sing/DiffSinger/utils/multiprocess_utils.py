@@ -45,3 +45,10 @@ def chunked_multiprocess_run(map_func, args, num_workers=None, ordered=True, ini
     for w in workers:
         w.join()
         w.close()
+
+def multiprocess_run_tqdm(map_func, args, num_workers=None, ordered=True, init_ctx_func=None,
+                          multithread=False, desc=None):
+    for i, res in tqdm(enumerate(
+            multiprocess_run(map_func, args, num_workers, ordered, init_ctx_func, multithread)),
+            total=len(args), desc=desc):
+        yield i, res

@@ -1,0 +1,102 @@
+base_config: ./base.yaml
+task_cls: tasks.tts.fs2.FastSpeech2Task
+
+# model
+hidden_size: 256
+dropout: 0.1
+encoder_type: fft # rel_fft|fft|tacotron|tacotron2|conformer
+decoder_type: fft # fft|rnn|conv|conformer|wn
+
+# rnn enc/dec
+encoder_K: 8
+decoder_rnn_dim: 0 # for rnn decoder, 0 -> hidden_size * 2
+
+# fft enc/dec
+use_pos_embed: true
+dec_num_heads: 2
+dec_layers: 4
+ffn_hidden_size: 1024
+enc_ffn_kernel_size: 9
+dec_ffn_kernel_size: 9
+
+# conv enc/dec
+enc_dec_norm: ln
+conv_use_pos: false
+layers_in_block: 2
+enc_dilations: [ 1, 1, 1, 1 ]
+enc_kernel_size: 5
+dec_dilations: [ 1, 1, 1, 1 ] # for conv decoder
+dec_kernel_size: 5
+dur_loss: mse # huber|mol
+
+# duration
+predictor_hidden: -1
+predictor_kernel: 5
+predictor_layers: 2
+dur_predictor_kernel: 3
+dur_predictor_layers: 2
+predictor_dropout: 0.5
+
+# pitch and energy
+pitch_norm: standard # standard|log
+use_pitch_embed: true
+pitch_type: frame # frame|ph|cwt
+use_uv: true
+cwt_hidden_size: 128
+cwt_layers: 2
+cwt_loss: l1
+cwt_add_f0_loss: false
+cwt_std_scale: 0.8
+
+pitch_ar: false
+pitch_embed_type: 0
+pitch_loss: 'l1' # l1|l2|ssim
+pitch_ssim_win: 11
+use_energy_embed: false
+
+# reference encoder and speaker embedding
+use_ref_enc: false
+use_var_enc: false
+lambda_commit: 0.25
+var_enc_vq_codes: 64
+ref_norm_layer: bn
+dec_inp_add_noise: false
+sil_add_noise: false
+ref_hidden_stride_kernel:
+  - 0,3,5 # conv_hidden_size, conv_stride, conv_kernel_size. conv_hidden_size=0: use hidden_size
+  - 0,3,5
+  - 0,2,5
+  - 0,2,5
+  - 0,2,5
+pitch_enc_hidden_stride_kernel:
+  - 0,2,5 # conv_hidden_size, conv_stride, conv_kernel_size. conv_hidden_size=0: use hidden_size
+  - 0,2,5
+  - 0,2,5
+dur_enc_hidden_stride_kernel:
+  - 0,2,3 # conv_hidden_size, conv_stride, conv_kernel_size. conv_hidden_size=0: use hidden_size
+  - 0,2,3
+  - 0,1,3
+
+# mel
+mel_loss: l1:0.5|ssim:0.5 # l1|l2|gdl|ssim or l1:0.5|ssim:0.5
+
+# loss lambda
+lambda_f0: 1.0
+lambda_uv: 1.0
+lambda_energy: 0.1
+lambda_ph_dur: 0.1
+lambda_sent_dur: 1.0
+lambda_word_dur: 1.0
+predictor_grad: 0.1
+
+# train and eval
+pretrain_fs_ckpt: ''
+warmup_updates: 2000
+max_tokens: 32000
+max_sentences: 100000
+max_valid_sentences: 1
+max_updates: 120000
+use_gt_dur: false
+use_gt_f0: false
+ds_workers: 2
+lr: 1.0

@@ -40,9 +40,9 @@ class LayerNorm(torch.nn.LayerNorm):
     :param int dim: dimension to be normalized
     """
 
-    def __init__(self, nout, dim=-1):
+    def __init__(self, nout, dim=-1, eps=1e-5):
         """Construct an LayerNorm object."""
-        super(LayerNorm, self).__init__(nout, eps=1e-12)
+        super(LayerNorm, self).__init__(nout, eps=eps)
         self.dim = dim
 
     def forward(self, x):
@@ -341,8 +341,11 @@ class FastspeechEncoder(FFTBlocks):
         # embed tokens and positions
         x = self.embed_scale * self.embed_tokens(txt_tokens)
         if hparams['use_pos_embed']:
-            positions = self.embed_positions(txt_tokens)
-            x = x + positions
+            if hparams.get('rel_pos') is not None and hparams['rel_pos']:
+                x = self.embed_positions(x)
+            else:
+                positions = self.embed_positions(txt_tokens)
+                x = x + positions
         x = F.dropout(x, p=self.dropout, training=self.training)
         return x
 

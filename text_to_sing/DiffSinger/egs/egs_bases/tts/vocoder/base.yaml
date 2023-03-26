@@ -1,0 +1,34 @@
+base_config: ../base.yaml
+binarization_args:
+  with_wav: true
+  with_spk_embed: false
+  with_align: false
+  with_word: false
+  with_txt: false
+
+###########
+# train and eval
+###########
+max_samples: 25600
+max_sentences: 5
+max_valid_sentences: 1
+max_updates: 1000000
+val_check_interval: 2000
+
+###########################################################
+#                FEATURE EXTRACTION SETTING               #
+###########################################################
+fft_size: 1024           # FFT size.
+hop_size: 256            # Hop size.
+win_length: null         # Window length.
+# If set to null, it will be the same as fft_size.
+window: "hann"           # Window function.
+num_mels: 80             # Number of mel basis.
+fmin: 80                 # Minimum freq in mel basis calculation.
+fmax: 7600               # Maximum frequency in mel basis calculation.
+aux_context_window: 0 # Context window size for auxiliary feature.
+use_pitch_embed: false
+
+generator_grad_norm: 10    # Generator's gradient norm.
+discriminator_grad_norm: 1 # Discriminator's gradient norm.
+disc_start_steps: 40000 # Number of steps to start to train discriminator.

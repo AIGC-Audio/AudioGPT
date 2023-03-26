@@ -18,6 +18,7 @@ from langchain.llms.openai import OpenAI
 import re
 import uuid
 import soundfile
+from scipy.io import wavfile
 from diffusers import StableDiffusionInpaintPipeline
 from PIL import Image
 import numpy as np
@@ -38,8 +39,16 @@ from inference.svs.ds_e2e import DiffSingerE2EInfer
 import whisper
 from text_to_speech.TTS_binding import TTSInference
 
+import torch
+from inference.svs.ds_e2e import DiffSingerE2EInfer
+from inference.tts.GenerSpeech import GenerSpeechInfer
+from utils.hparams import set_hparams
+from utils.hparams import hparams as hp
+from utils.os_utils import move_file
 AUDIO_CHATGPT_PREFIX = """Audio ChatGPT
-
+AUdio ChatGPT can not directly read audios, but it has a list of tools to finish different audio synthesis tasks. Each audio will have a file name formed as "audio/xxx.wav". When talking about audios, Visual ChatGPT is very strict to the file name and will never fabricate nonexistent files. 
+AUdio ChatGPT is able to use tools in a sequence, and is loyal to the tool observation outputs rather than faking the audio content and audio file name. It will remember to provide the file name from the last tool observation, if a new audio is generated.
+Human may provide Audio ChatGPT with a description. Audio ChatGPT should generate audios according to this description rather than directly imagine from memory or yourself."
 
 TOOLS:
 ------
@@ -282,7 +291,7 @@ class I2A:
         with torch.no_grad():
             result = self.img2audio(
                 image=image,
-                H=melbins, 
+                H=melbins,
                 W=mel_len
             )
         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
@@ -309,133 +318,184 @@ class T2S:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print("Initializing DiffSinger to %s" % device)
         self.device = device
-        exp_name = 'text_to_sing/DiffSinger/checkpoints/0831_opencpop_ds1000'
-        exp_name = 'checkpoints/0831_opencpop_ds1000'
-        config= 'text_to_sing/DiffSinger/usr/configs/midi/e2e/opencpop/ds100_adj_rel.yaml'
-        from utils.hparams import set_hparams
-        from utils.hparams import hparams as hp
-        set_hparams(config= config,exp_name=exp_name, print_hparams=False)
+        self.exp_name = 'checkpoints/0831_opencpop_ds1000'
+        self.config= 'text_to_sing/DiffSinger/usr/configs/midi/e2e/opencpop/ds1000.yaml'
+        self.set_model_hparams()
+        self.pipe = DiffSingerE2EInfer(self.hp, device)
+        self.defualt_inp = {
+            'text': '你 说 你 不 SP 懂 为 何 在 这 时 牵 手 AP',
+            'notes': 'D#4/Eb4 | D#4/Eb4 | D#4/Eb4 | D#4/Eb4 | rest | D#4/Eb4 | D4 | D4 | D4 | D#4/Eb4 | F4 | D#4/Eb4 | D4 | rest',
+            'notes_duration': '0.113740 | 0.329060 | 0.287950 | 0.133480 | 0.150900 | 0.484730 | 0.242010 | 0.180820 | 0.343570 | 0.152050 | 0.266720 | 0.280310 | 0.633300 | 0.444590'
+        }
+
+    def set_model_hparams(self):
+        set_hparams(config=self.config, exp_name=self.exp_name, print_hparams=False)
         self.hp = hp
-        self.pipe = DiffSingerE2EInfer(self.hp)
+
     def inference(self, inputs):
-        key = ['text', 'notes', 'notes_duration']
+        self.set_model_hparams()
         val = inputs.split(",")
-        print(val)
-        inp = {k:v for k,v in zip(key,val)}
-        print(inp)
+        key = ['text', 'notes', 'notes_duration']
+        if inputs == '' or len(val) < len(key):
+            inp = self.defualt_inp
+        else:
+            inp = {k:v for k,v in zip(key,val)}
         wav = self.pipe.infer_once(inp)
         wav *= 32767
         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
-        soundfile.write(audio_filename, wav.astype(np.int16), self.hp['audio_sample_rate'])
-        print(f"Processed T2S.run, text: {val[0]}, notes: {val[1]}, notes duration: {val[2]}, audio_filename: {audio_filename}")
+        wavfile.write(audio_filename, self.hp['audio_sample_rate'], wav.astype(np.int16))
+        print(f"Processed T2S.run, audio_filename: {audio_filename}")
         return audio_filename
 
-# need to debug
+class TTS_OOD:
+    def __init__(self, device):
+        if device is None:
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print("Initializing GenerSpeech to %s" % device)
+        self.device = device
+        self.exp_name = 'checkpoints/GenerSpeech'
+        self.config = 'text_to_sing/DiffSinger/modules/GenerSpeech/config/generspeech.yaml'
+        self.set_model_hparams()
+        self.pipe = GenerSpeechInfer(self.hp, device)
+
+    def set_model_hparams(self):
+        set_hparams(config=self.config, exp_name=self.exp_name, print_hparams=False)
+        f0_stats_fn = f'{hp["binary_data_dir"]}/train_f0s_mean_std.npy'
+        if os.path.exists(f0_stats_fn):
+            hp['f0_mean'], hp['f0_std'] = np.load(f0_stats_fn)
+            hp['f0_mean'] = float(hp['f0_mean'])
+            hp['f0_std'] = float(hp['f0_std'])
+        hp['emotion_encoder_path'] = 'checkpoints/Emotion_encoder.pt'
+        self.hp = hp
+
+    def inference(self, inputs):
+        self.set_model_hparams()
+        key = ['ref_audio', 'text']
+        val = inputs.split(",")
+        inp = {k: v for k, v in zip(key, val)}
+        wav = self.pipe.infer_once(inp)
+        wav *= 32767
+        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        wavfile.write(audio_filename, self.hp['audio_sample_rate'], wav.astype(np.int16))
+        print(
+            f"Processed GenerSpeech.run. Input text:{val[1]}. Input reference audio: {val[0]}. Output Audio_filename: {audio_filename}")
+        return audio_filename
+
+
 class Inpaint:
     def __init__(self, device):
         print("Initializing Make-An-Audio-inpaint to %s" % device)
         self.device = device
-        self.sampler = initialize_model('text_to_audio/Make_An_Audio_inpaint/configs/inpaint/txt2audio_args.yaml', 'text_to_audio/Make_An_Audio_inpaint/useful_ckpts/inpaint7_epoch00047.ckpt')
-        self.vocoder = VocoderBigVGAN('./vocoder/logs/bigv16k53w',device=device)
-    def make_batch_sd(mel, mask, num_samples=1):
+        self.sampler = initialize_model('text_to_audio/Make_An_Audio_inpaint/configs/inpaint/txt2audio_args.yaml',
+                                        'text_to_audio/Make_An_Audio_inpaint/useful_ckpts/inpaint7_epoch00047.ckpt')
+        self.vocoder = VocoderBigVGAN('./vocoder/logs/bigv16k53w', device=device)
 
-        mel = torch.from_numpy(mel)[None,None,...].to(dtype=torch.float32)
-        mask = torch.from_numpy(mask)[None,None,...].to(dtype=torch.float32)
+    def make_batch_sd(self, mel, mask, num_samples=1):
+
+        mel = torch.from_numpy(mel)[None, None, ...].to(dtype=torch.float32)
+        mask = torch.from_numpy(mask)[None, None, ...].to(dtype=torch.float32)
         masked_mel = (1 - mask) * mel
 
         mel = mel * 2 - 1
         mask = mask * 2 - 1
-        masked_mel = masked_mel * 2 -1
+        masked_mel = masked_mel * 2 - 1
 
         batch = {
-             "mel": repeat(mel.to(device=self.device), "1 ... -> n ...", n=num_samples),
-             "mask": repeat(mask.to(device=self.device), "1 ... -> n ...", n=num_samples),
-             "masked_mel": repeat(masked_mel.to(device=self.device), "1 ... -> n ...", n=num_samples),
+            "mel": repeat(mel.to(device=self.device), "1 ... -> n ...", n=num_samples),
+            "mask": repeat(mask.to(device=self.device), "1 ... -> n ...", n=num_samples),
+            "masked_mel": repeat(masked_mel.to(device=self.device), "1 ... -> n ...", n=num_samples),
         }
         return batch
-    def gen_mel(input_audio):
-        sr,ori_wav = input_audio
-        print(sr,ori_wav.shape,ori_wav)
 
-        ori_wav = ori_wav.astype(np.float32, order='C') / 32768.0 # order='C'是以C语言格式存储，不用管
-        if len(ori_wav.shape)==2:# stereo
-            ori_wav = librosa.to_mono(ori_wav.T)# gradio load wav shape could be (wav_len,2) but librosa expects (2,wav_len)
-        print(sr,ori_wav.shape,ori_wav)
-        ori_wav = librosa.resample(ori_wav,orig_sr = sr,target_sr = SAMPLE_RATE)
+    def gen_mel(self, input_audio):
+        sr, ori_wav = input_audio
+        print(sr, ori_wav.shape, ori_wav)
 
-        mel_len,hop_size = 848,256
+        ori_wav = ori_wav.astype(np.float32, order='C') / 32768.0  # order='C'是以C语言格式存储，不用管
+        if len(ori_wav.shape) == 2:  # stereo
+            ori_wav = librosa.to_mono(
+                ori_wav.T)  # gradio load wav shape could be (wav_len,2) but librosa expects (2,wav_len)
+        print(sr, ori_wav.shape, ori_wav)
+        ori_wav = librosa.resample(ori_wav, orig_sr=sr, target_sr=SAMPLE_RATE)
+
+        mel_len, hop_size = 848, 256
         input_len = mel_len * hop_size
         if len(ori_wav) < input_len:
-            input_wav = np.pad(ori_wav,(0,mel_len*hop_size),constant_values=0)
+            input_wav = np.pad(ori_wav, (0, mel_len * hop_size), constant_values=0)
         else:
             input_wav = ori_wav[:input_len]
- 
+
         mel = TRANSFORMS_16000(input_wav)
         return mel
-    def show_mel_fn(input_audio):
-        crop_len = 500 # the full mel cannot be showed due to gradio's Image bug when using tool='sketch'
-        crop_mel = self.gen_mel(input_audio)[:,:crop_len]
+
+    def show_mel_fn(self, input_audio):
+        crop_len = 500  # the full mel cannot be showed due to gradio's Image bug when using tool='sketch'
+        crop_mel = self.gen_mel(input_audio)[:, :crop_len]
         color_mel = cmap_transform(crop_mel)
-        return Image.fromarray((color_mel*255).astype(np.uint8))
-    def inpaint(batch, seed, ddim_steps, num_samples=1, W=512, H=512):
+        return Image.fromarray((color_mel * 255).astype(np.uint8))
+
+    def inpaint(self, batch, seed, ddim_steps, num_samples=1, W=512, H=512):
         model = self.sampler.model
-    
+
         prng = np.random.RandomState(seed)
         start_code = prng.randn(num_samples, model.first_stage_model.embed_dim, H // 8, W // 8)
         start_code = torch.from_numpy(start_code).to(device=self.device, dtype=torch.float32)
 
         c = model.get_first_stage_encoding(model.encode_first_stage(batch["masked_mel"]))
         cc = torch.nn.functional.interpolate(batch["mask"],
-                                                size=c.shape[-2:])
-        c = torch.cat((c, cc), dim=1) # (b,c+1,h,w) 1 is mask
+                                             size=c.shape[-2:])
+        c = torch.cat((c, cc), dim=1)  # (b,c+1,h,w) 1 is mask
 
-        shape = (c.shape[1]-1,)+c.shape[2:]
+        shape = (c.shape[1] - 1,) + c.shape[2:]
         samples_ddim, _ = self.sampler.sample(S=ddim_steps,
-                                            conditioning=c,
-                                            batch_size=c.shape[0],
-                                            shape=shape,
-                                            verbose=False)
+                                              conditioning=c,
+                                              batch_size=c.shape[0],
+                                              shape=shape,
+                                              verbose=False)
         x_samples_ddim = model.decode_first_stage(samples_ddim)
 
-    
-        mask = batch["mask"]# [-1,1]
-        mel = torch.clamp((batch["mel"]+1.0)/2.0,min=0.0, max=1.0)
-        mask = torch.clamp((batch["mask"]+1.0)/2.0,min=0.0, max=1.0)
-        predicted_mel = torch.clamp((x_samples_ddim+1.0)/2.0,min=0.0, max=1.0)
-        inpainted = (1-mask)*mel+mask*predicted_mel
+        mask = batch["mask"]  # [-1,1]
+        mel = torch.clamp((batch["mel"] + 1.0) / 2.0, min=0.0, max=1.0)
+        mask = torch.clamp((batch["mask"] + 1.0) / 2.0, min=0.0, max=1.0)
+        predicted_mel = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
+        inpainted = (1 - mask) * mel + mask * predicted_mel
         inpainted = inpainted.cpu().numpy().squeeze()
         inapint_wav = self.vocoder.vocode(inpainted)
 
         return inpainted, inapint_wav
-    def predict(input_audio,mel_and_mask,ddim_steps,seed):
-        show_mel = np.array(mel_and_mask['image'].convert("L"))/255 # 由于展示的mel只展示了一部分，所以需要重新从音频生成mel
-        mask = np.array(mel_and_mask["mask"].convert("L"))/255
 
-        mel_bins,mel_len = 80,848
+    def predict(self, input_audio, mel_and_mask, ddim_steps, seed):
+        show_mel = np.array(mel_and_mask['image'].convert("L")) / 255  # 由于展示的mel只展示了一部分，所以需要重新从音频生成mel
+        mask = np.array(mel_and_mask["mask"].convert("L")) / 255
 
-        input_mel = self.gen_mel(input_audio)[:,:mel_len]# 由于展示的mel只展示了一部分，所以需要重新从音频生成mel
-        mask = np.pad(mask,((0,0),(0,mel_len-mask.shape[1])),mode='constant',constant_values=0)# 将mask填充到原来的mel的大小
-        print(mask.shape,input_mel.shape)
+        mel_bins, mel_len = 80, 848
+
+        input_mel = self.gen_mel(input_audio)[:, :mel_len]  # 由于展示的mel只展示了一部分，所以需要重新从音频生成mel
+        mask = np.pad(mask, ((0, 0), (0, mel_len - mask.shape[1])), mode='constant',
+                      constant_values=0)  # 将mask填充到原来的mel的大小
+        print(mask.shape, input_mel.shape)
         with torch.no_grad():
-            batch = make_batch_sd(input_mel,mask,device,num_samples=1)
-            inpainted,gen_wav = self.inpaint(
+            batch = make_batch_sd(input_mel, mask, device, num_samples=1)
+            inpainted, gen_wav = self.inpaint(
                 batch=batch,
                 seed=seed,
                 ddim_steps=ddim_steps,
                 num_samples=1,
                 H=mel_bins, W=mel_len
             )
-        inpainted = inpainted[:,:show_mel.shape[1]]
+        inpainted = inpainted[:, :show_mel.shape[1]]
         color_mel = cmap_transform(inpainted)
         input_len = int(input_audio[1].shape[0] * SAMPLE_RATE / input_audio[0])
         gen_wav = (gen_wav * 32768).astype(np.int16)[:input_len]
-        return Image.fromarray((color_mel*255).astype(np.uint8)),(SAMPLE_RATE,gen_wav)
-    
+        return Image.fromarray((color_mel * 255).astype(np.uint8)), (SAMPLE_RATE, gen_wav)
+
+
 class ASR:
     def __init__(self, device):
         print("Initializing Whisper to %s" % device)
         self.device = device
         self.model = whisper.load_model("base", device=device)
+
     def inference(self, audio_path):
         audio = whisper.load_audio(audio_path)
         audio = whisper.pad_or_trim(audio)
@@ -456,6 +516,8 @@ class ConversationBot:
         self.t2s = T2S(device="cuda:2")
         self.i2a = I2A(device="cuda:1")
         self.asr = ASR(device="cuda:1")
+        self.t2s = T2S(device="cuda:0")
+        self.tts_ood = TTS_OOD(device="cuda:0")
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
         self.tools = [
             Tool(name="Generate Image From User Input Text", func=self.t2i.inference,
@@ -467,6 +529,18 @@ class ConversationBot:
             Tool(name="Generate Audio From User Input Text", func=self.t2a.inference,
                  description="useful for when you want to generate an audio from a user input text and it saved it to a file."
                              "The input to this tool should be a string, representing the text used to generate audio."),
+            Tool(
+                name="Generate speech with unseen style derived from a reference audio acoustic reference from user input text and save it to a file", func= self.tts_ood.inference,
+                description="useful for when you want to generate high-quality speech samples with unseen styles (e.g., timbre, emotion, and prosody) derived from a reference custom voice."
+                            "Like: Generate a speech with unseen style derived from this custom voice. The text is xxx."
+                            "Or Speak using the voice of this audio. The text is xxx."
+                            "The input to this tool should be a comma seperated string of two, representing reference audio path and input text."),
+            Tool(name="Generate singing voice From User Input Text, Note and Duration Sequence", func= self.t2s.inference,
+                 description="useful for when you want to generate a piece of singing voice (Optional: from User Input Text, Note and Duration Sequence) and save it to a file."
+                             "If Like: Generate a piece of singing voice, the input to this tool should be \"\" since there is no User Input Text, Note and Duration Sequence ."
+                             "If Like: Generate a piece of singing voice. Text: xxx, Note: xxx, Duration: xxx. "
+                             "Or Like: Generate a piece of singing voice. Text is xxx, note is xxx, duration is xxx."
+                             "The input to this tool should be a comma seperated string of three, representing text, note and duration sequence since User Input Text, Note and Duration Sequence are all provided."),
             Tool(name="Generate singing voice From User Input Text", func=self.t2s.inference,
                  description="useful for when you want to generate a piece of singing voice from its description."
                              "The input to this tool should be a comma seperated string of three, representing the text sequence and its corresponding note and duration sequence."),
@@ -479,8 +553,7 @@ class ConversationBot:
                              "The input to this tool should be a string, representing the image_path. "),
             Tool(name="Get Audio Transcription", func=self.asr.inference,
                  description="useful for when you want to know the text content corresponding to this audio, receives audio_path as input."
-                             "The input to this tool should be a string, representing the audio_path.")
-                            ]
+                             "The input to this tool should be a string, representing the audio_path.")]
         self.agent = initialize_agent(
             self.tools,
             self.llm,
@@ -563,7 +636,7 @@ if __name__ == '__main__':
         state = gr.State([])
         with gr.Row():
             with gr.Column(scale=0.7):
-                txt = gr.Textbox(show_label=False, placeholder="Enter text and press enter, or upload an image").style(container=False)
+                txt = gr.Textbox(show_label=False, placeholder="Enter text and press enter, or upload an image or audio").style(container=False)
             with gr.Column(scale=0.15, min_width=0):
                 clear = gr.Button("Clear️")
             with gr.Column(scale=0.15, min_width=0):
