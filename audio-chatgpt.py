@@ -46,14 +46,14 @@ from utils.hparams import set_hparams
 from utils.hparams import hparams as hp
 from utils.os_utils import move_file
 AUDIO_CHATGPT_PREFIX = """Audio ChatGPT
-AUdio ChatGPT can not directly read audios, but it has a list of tools to finish different audio synthesis tasks. Each audio will have a file name formed as "audio/xxx.wav". When talking about audios, Visual ChatGPT is very strict to the file name and will never fabricate nonexistent files. 
+AUdio ChatGPT can not directly read audios, but it has a list of tools to finish different audio synthesis tasks. Each audio will have a file name formed as "audio/xxx.wav". When talking about audios, Audio ChatGPT is very strict to the file name and will never fabricate nonexistent files. 
 AUdio ChatGPT is able to use tools in a sequence, and is loyal to the tool observation outputs rather than faking the audio content and audio file name. It will remember to provide the file name from the last tool observation, if a new audio is generated.
 Human may provide Audio ChatGPT with a description. Audio ChatGPT should generate audios according to this description rather than directly imagine from memory or yourself."
 
 TOOLS:
 ------
 
-Audio ChatGPT  has access to the following tools:"""
+Audio ChatGPT has access to the following tools:"""
 
 AUDIO_CHATGPT_FORMAT_INSTRUCTIONS = """To use a tool, please use the following format:
 
@@ -82,7 +82,6 @@ Previous conversation history:
 New input: {input}
 Thought: Do I need to use a tool? {agent_scratchpad}"""
 
-#temp_audio_filename = "audio/c00d9240.wav"
 
 
 def cut_dialogue_history(history_memory, keep_last_n_words = 500):
@@ -99,22 +98,6 @@ def cut_dialogue_history(history_memory, keep_last_n_words = 500):
             paragraphs = paragraphs[1:]
         return '\n' + '\n'.join(paragraphs)
 
-def get_new_image_name(org_img_name, func_name="update"):
-    head_tail = os.path.split(org_img_name)
-    head = head_tail[0]
-    tail = head_tail[1]
-    name_split = tail.split('.')[0].split('_')
-    this_new_uuid = str(uuid.uuid4())[0:4]
-    if len(name_split) == 1:
-        most_org_file_name = name_split[0]
-        recent_prev_file_name = name_split[0]
-        new_file_name = '{}_{}_{}_{}.png'.format(this_new_uuid, func_name, recent_prev_file_name, most_org_file_name)
-    else:
-        assert len(name_split) == 4
-        most_org_file_name = name_split[3]
-        recent_prev_file_name = name_split[0]
-        new_file_name = '{}_{}_{}_{}.png'.format(this_new_uuid, func_name, recent_prev_file_name, most_org_file_name)
-    return os.path.join(head, new_file_name)
 
 
 def initialize_model(config, ckpt, device):
@@ -267,7 +250,7 @@ class I2A:
         image = Image.open(image)
         image = self.sampler.model.cond_stage_model.preprocess(image).unsqueeze(0)
         image_embedding = self.sampler.model.cond_stage_model.forward_img(image)
-        c = image_embedding.repeat(n_samples, 1, 1)# shape:[1,77,1280],即还没有变成句子embedding，仍是每个单词的embedding
+        c = image_embedding.repeat(n_samples, 1, 1)
         shape = [self.sampler.model.first_stage_model.embed_dim, H//8, W//8]  # (z_dim, 80//2^x, 848//2^x)
         samples_ddim, _ = self.sampler.sample(S=ddim_steps,
                                             conditioning=c,
@@ -521,38 +504,33 @@ class ConversationBot:
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
         self.tools = [
             Tool(name="Generate Image From User Input Text", func=self.t2i.inference,
-                 description="useful for when you want to generate an image from a user input text and it saved it to a file. like: generate an image of an object or something, or generate an image that includes some objects. "
+                 description="useful for when you want to generate an image from a user input text and saved it to a file. like: generate an image of an object or something, or generate an image that includes some objects. "
                              "The input to this tool should be a string, representing the text used to generate image. "),
             Tool(name="Get Photo Description", func=self.i2t.inference,
                  description="useful for when you want to know what is inside the photo. receives image_path as input. "
                              "The input to this tool should be a string, representing the image_path. "),
             Tool(name="Generate Audio From User Input Text", func=self.t2a.inference,
-                 description="useful for when you want to generate an audio from a user input text and it saved it to a file."
+                 description="useful for when you want to generate an audio from a user input text and it saved it to a file. like: generate an audio of something, or generate an audio that includes some objects. "
                              "The input to this tool should be a string, representing the text used to generate audio."),
             Tool(
-                name="Generate speech with unseen style derived from a reference audio acoustic reference from user input text and save it to a file", func= self.tts_ood.inference,
-                description="useful for when you want to generate high-quality speech samples with unseen styles (e.g., timbre, emotion, and prosody) derived from a reference custom voice."
-                            "Like: Generate a speech with unseen style derived from this custom voice. The text is xxx."
-                            "Or Speak using the voice of this audio. The text is xxx."
+                name="Generate human speech with style derived from a speech reference and user input text and save it to a file", func= self.tts_ood.inference,
+                description="useful for when you want to generate speech samples with styles (e.g., timbre, emotion, and prosody) derived from a reference custom voice."
+                            "ike: Generate a speech with style transferred from this voice. The text is xxx., or speak using the voice of this audio. The text is xxx."
                             "The input to this tool should be a comma seperated string of two, representing reference audio path and input text."),
             Tool(name="Generate singing voice From User Input Text, Note and Duration Sequence", func= self.t2s.inference,
-                 description="useful for when you want to generate a piece of singing voice (Optional: from User Input Text, Note and Duration Sequence) and save it to a file."
+                 description="useful for when you want to generate singing voice (Optional: from User Input Text, Note and Duration Sequence) and save it to a file."
                              "If Like: Generate a piece of singing voice, the input to this tool should be \"\" since there is no User Input Text, Note and Duration Sequence ."
                              "If Like: Generate a piece of singing voice. Text: xxx, Note: xxx, Duration: xxx. "
                              "Or Like: Generate a piece of singing voice. Text is xxx, note is xxx, duration is xxx."
                              "The input to this tool should be a comma seperated string of three, representing text, note and duration sequence since User Input Text, Note and Duration Sequence are all provided."),
-            Tool(name="Generate singing voice From User Input Text", func=self.t2s.inference,
-                 description="useful for when you want to generate a piece of singing voice from its description."
-                             "The input to this tool should be a comma seperated string of three, representing the text sequence and its corresponding note and duration sequence."),
             Tool(name="Synthesize Speech Given the User Input Text", func=self.tts.inference,
-                 description="useful for when you want to convert a user input text into speech audio it saved it to a file."
+                 description="useful for when you want to convert a user input text into speech and saved it to a file."
                              "The input to this tool should be a string, representing the text used to be converted to speech."),
-
             Tool(name="Generate Audio From The Image", func=self.i2a.inference,
                  description="useful for when you want to generate an audio based on an image."
                              "The input to this tool should be a string, representing the image_path. "),
-            Tool(name="Get Audio Transcription", func=self.asr.inference,
-                 description="useful for when you want to know the text content corresponding to this audio, receives audio_path as input."
+            Tool(name="Transcribe speech", func=self.asr.inference,
+                 description="useful for when you want to know the text corresponding to a human speech, receives audio_path as input."
                              "The input to this tool should be a string, representing the audio_path.")]
         self.agent = initialize_agent(
             self.tools,

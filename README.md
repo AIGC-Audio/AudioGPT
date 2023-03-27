@@ -3,27 +3,26 @@
 **AudioGPT** connects ChatGPT and a series of Audio Foundation Models to enable **sending** and **receiving** speech, sing, and audio during chatting.
 
 
-## Capability
-Here we list the capability of AudioGPT at this time. More supported models and tasks are comming soon.
+## Capabilities
+Here we list the capability of AudioGPT at this time. More supported models and tasks are comming soon. For prompt examples, refer to [asset](assets/README.md)
 
-|           Task            |         Foundation Model         | Status |
-|:-------------------------:|:--------------------------------:|:------:|
-| ----------Speech--------- |                /                 |   /    |
-|      Text-to-Speech       | [FastSpeech](), [SyntaSpeech]()  |  WIP   |
-|      Neural Vocoding      |    [BigVGAN](), [FastDiff]()     |  WIP   |
-|      Style Transfer       |         [GenerSpeech]()          |  WIP   |
-|    Speech Recognition     |           [whisper]()            |  Yes   |
-|  ----------Sing---------  |                /                 |        |
-|       Text-to-Sing        |          [DiffSinger]()          |  Yes   |
-| ----------Audio---------  |                /                 |        |
-|       Text-to-Audio       |        [Make-An-Audio]()         |  Yes   |
-|     Audio Inpainting      |        [Make-An-Audio]()         |  WIP   |
-|      Image-to-Audio       |        [Make-An-Audio]()         |  Yes   |
-
-
+|           Task            |        Foundation Model         | Status |
+|:-------------------------:|:-------------------------------:|:------:|
+| ----------Speech--------- |                /                |   /    |
+|      Text-to-Speech       | [FastSpeech](), [SyntaSpeech]() |  Yes   |
+|      Style Transfer       |         [GenerSpeech]()         |  WIP   |
+|    Speech Recognition     |           [whisper]()           |  Yes   |
+|  ----------Sing---------  |                /                |        |
+|       Text-to-Sing        |         [DiffSinger]()          |  Yes   |
+| ----------Audio---------  |                /                |        |
+|       Text-to-Audio       |        [Make-An-Audio]()        |  Yes   |
+|     Audio Inpainting      |        [Make-An-Audio]()        |  WIP   |
+|      Image-to-Audio       |        [Make-An-Audio]()        |  Yes   |
+|  ----------Face---------  |   
+|  Talking Head Synthesis   |          [GeneFace]()           |  WIP   |
 
 ## Internal Version Updates
-
+3.27 Support Style Transfer/Talking head Synthesis\
 3.23 Support Text-to-Sing\
 3.21 Support Image-to-Sing\
 3.19 Support Speech Recognition\
