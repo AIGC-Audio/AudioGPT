@@ -4,9 +4,9 @@
 
 
 ## Capabilities
-Here we list the capability of AudioGPT at this time. More supported models and tasks are comming soon. For prompt examples, refer to [asset](assets/README.md)
+Here we list the capability of AudioGPT at this time. More supported models and tasks are comming soon. For prompt examples, refer to [asset](assets/README.md).
 
-|           Task            |        Foundation Model         | Status |
+|           Task            |   Supported Foundation Models   | Status |
 |:-------------------------:|:-------------------------------:|:------:|
 | ----------Speech--------- |                /                |   /    |
 |      Text-to-Speech       | [FastSpeech](), [SyntaSpeech]() |  Yes   |
@@ -27,6 +27,13 @@ Here we list the capability of AudioGPT at this time. More supported models and 
 3.21 Support Image-to-Sing\
 3.19 Support Speech Recognition\
 3.17 Support Text-to-Audio
+
+## Todo
+- [ ] clean text to sing/speech code
+- [ ] import Espnet models for speech tasks
+- [ ] merge talking head synthesis into main
+- [ ] change audio/video log output
+- [ ] support huggingface space
 
 ## Acknowledgement
 We appreciate the open source of the following projects:
