@@ -9,11 +9,14 @@ Here we list the capability of AudioGPT at this time. More supported models and 
 |           Task            |   Supported Foundation Models   | Status |
 |:-------------------------:|:-------------------------------:|:------:|
 | ----------Speech--------- |                /                |   /    |
-|      Text-to-Speech       | [FastSpeech](), [SyntaSpeech]() |  Yes   |
+|      Text-to-Speech       | [FastSpeech](), [SyntaSpeech](), [VITS]() |  Yes (WIP)   |
 |      Style Transfer       |         [GenerSpeech]()         |  WIP   |
-|    Speech Recognition     |           [whisper]()           |  Yes   |
+|    Speech Recognition     |           [whisper](), [Conformer]()           |  Yes   |
+|    Speech Enhancement     |          [ConvTasNet]()         |  WIP   |
+|    Speech Separation      |          [TF-GridNet]()         |  WIP   |
+|    Speech Translation     |          [Multi-decoder]()      |  WIP   |
 |  ----------Sing---------  |                /                |        |
-|       Text-to-Sing        |         [DiffSinger]()          |  Yes   |
+|       Text-to-Sing        |         [DiffSinger](), [VISinger]()          |  Yes (WIP)   |
 | ----------Audio---------  |                /                |        |
 |       Text-to-Audio       |        [Make-An-Audio]()        |  Yes   |
 |     Audio Inpainting      |        [Make-An-Audio]()        |  WIP   |
