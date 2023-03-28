@@ -1,27 +1,42 @@
 # AudioGPT
 
-**AudioGPT** connects ChatGPT and a series of Audio Foundation Models to enable **sending** and **receiving** speech, sing, and audio during chatting.
+**AudioGPT** connects ChatGPT and a series of Audio Foundation Models to enable **sending** and **receiving** speech, sing, audio, and talking head during chatting.
 
 
 ## Capabilities
+
+Up-to-date link: https://eac422a9e2289d6b.gradio.app/
+
 Here we list the capability of AudioGPT at this time. More supported models and tasks are comming soon. For prompt examples, refer to [asset](assets/README.md).
 
+### Speech
 |           Task            |   Supported Foundation Models   | Status |
 |:-------------------------:|:-------------------------------:|:------:|
-| ----------Speech--------- |                /                |   /    |
 |      Text-to-Speech       | [FastSpeech](), [SyntaSpeech](), [VITS]() |  Yes (WIP)   |
-|      Style Transfer       |         [GenerSpeech]()         |  WIP   |
+|      Style Transfer       |         [GenerSpeech]()         |  Yes   |
 |    Speech Recognition     |           [whisper](), [Conformer]()           |  Yes   |
 |    Speech Enhancement     |          [ConvTasNet]()         |  WIP   |
 |    Speech Separation      |          [TF-GridNet]()         |  WIP   |
 |    Speech Translation     |          [Multi-decoder]()      |  WIP   |
-|  ----------Sing---------  |                /                |        |
+|  Mono-to-Binaural Speech  |          []()      |  WIP   |
+
+### Sing
+
+|           Task            |   Supported Foundation Models   | Status |
+|:-------------------------:|:-------------------------------:|:------:|
 |       Text-to-Sing        |         [DiffSinger](), [VISinger]()          |  Yes (WIP)   |
-| ----------Audio---------  |                /                |        |
+
+### Audio
+|           Task            |   Supported Foundation Models   | Status |
+|:-------------------------:|:-------------------------------:|:------:|
 |       Text-to-Audio       |        [Make-An-Audio]()        |  Yes   |
 |     Audio Inpainting      |        [Make-An-Audio]()        |  WIP   |
 |      Image-to-Audio       |        [Make-An-Audio]()        |  Yes   |
-|  ----------Face---------  |   
+
+### Talking Head
+
+|           Task            |   Supported Foundation Models   | Status |
+|:-------------------------:|:-------------------------------:|:------:|
 |  Talking Head Synthesis   |          [GeneFace]()           |  WIP   |
 
 ## Internal Version Updates
