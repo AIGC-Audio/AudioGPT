@@ -5,6 +5,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_sing/DiffSinger'))
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_audio/Make_An_Audio'))
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_audio/Make_An_Audio_img'))
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'audio_to_text/Audiocaption'))
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'audio_detection'))
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'mono2binaural'))
 import gradio as gr
 from transformers import AutoModelForCausalLM, AutoTokenizer, CLIPSegProcessor, CLIPSegForImageSegmentation
 import torch
@@ -45,6 +48,11 @@ from inference.tts.GenerSpeech import GenerSpeechInfer
 from utils.hparams import set_hparams
 from utils.hparams import hparams as hp
 from utils.os_utils import move_file
+import librosa
+from audio_infer.utils import config as detection_config
+from audio_infer.pytorch.models import PVT
+from src.models import BinauralNetwork
+import uuid
 AUDIO_CHATGPT_PREFIX = """Audio ChatGPT
 AUdio ChatGPT can not directly read audios, but it has a list of tools to finish different audio synthesis tasks. Each audio will have a file name formed as "audio/xxx.wav". When talking about audios, Audio ChatGPT is very strict to the file name and will never fabricate nonexistent files. 
 AUdio ChatGPT is able to use tools in a sequence, and is loyal to the tool observation outputs rather than faking the audio content and audio file name. It will remember to provide the file name from the last tool observation, if a new audio is generated.
@@ -488,6 +496,131 @@ class ASR:
         result = whisper.decode(self.model, mel, options)
         return result.text
 
+
+class SoundDetection:
+    def __init__(self, device):
+        self.device = device
+        self.sample_rate = 32000
+        self.window_size = 1024
+        self.hop_size = 320
+        self.mel_bins = 64
+        self.fmin = 50
+        self.fmax = 14000
+        self.model_type = 'PVT'
+        self.checkpoint_path = './audio_detection/audio_infer/useful_ckpts/220000_iterations.pth'
+        self.classes_num = detection_config.classes_num
+        self.labels = detection_config.labels
+        self.frames_per_second = self.sample_rate // self.hop_size
+        # Model = eval(self.model_type)
+        self.model = PVT(sample_rate=self.sample_rate, window_size=self.window_size, 
+            hop_size=self.hop_size, mel_bins=self.mel_bins, fmin=self.fmin, fmax=self.fmax, 
+            classes_num=self.classes_num)
+        checkpoint = torch.load(self.checkpoint_path, map_location=self.device)
+        self.model.load_state_dict(checkpoint['model'])
+        self.model.to(device)
+
+    def inference(self, audio_path):
+        # Forward
+        (waveform, _) = librosa.core.load(audio_path, sr=self.sample_rate, mono=True)
+        waveform = waveform[None, :]    # (1, audio_length)
+        waveform = torch.from_numpy(waveform)
+        waveform = waveform.to(self.device)
+        # Forward
+        with torch.no_grad():
+            self.model.eval()
+            batch_output_dict = self.model(waveform, None)
+        framewise_output = batch_output_dict['framewise_output'].data.cpu().numpy()[0]
+        """(time_steps, classes_num)"""
+        # print('Sound event detection result (time_steps x classes_num): {}'.format(
+        #     framewise_output.shape))
+        import numpy as np
+        import matplotlib.pyplot as plt
+        sorted_indexes = np.argsort(np.max(framewise_output, axis=0))[::-1]
+        top_k = 10  # Show top results
+        top_result_mat = framewise_output[:, sorted_indexes[0 : top_k]]    
+        """(time_steps, top_k)"""
+        # Plot result    
+        stft = librosa.core.stft(y=waveform[0].data.cpu().numpy(), n_fft=self.window_size, 
+            hop_length=self.hop_size, window='hann', center=True)
+        frames_num = stft.shape[-1]
+        fig, axs = plt.subplots(2, 1, sharex=True, figsize=(10, 4))
+        axs[0].matshow(np.log(np.abs(stft)), origin='lower', aspect='auto', cmap='jet')
+        axs[0].set_ylabel('Frequency bins')
+        axs[0].set_title('Log spectrogram')
+        axs[1].matshow(top_result_mat.T, origin='upper', aspect='auto', cmap='jet', vmin=0, vmax=1)
+        axs[1].xaxis.set_ticks(np.arange(0, frames_num, self.frames_per_second))
+        axs[1].xaxis.set_ticklabels(np.arange(0, frames_num / self.frames_per_second))
+        axs[1].yaxis.set_ticks(np.arange(0, top_k))
+        axs[1].yaxis.set_ticklabels(np.array(self.labels)[sorted_indexes[0 : top_k]])
+        axs[1].yaxis.grid(color='k', linestyle='solid', linewidth=0.3, alpha=0.3)
+        axs[1].set_xlabel('Seconds')
+        axs[1].xaxis.set_ticks_position('bottom')
+        plt.tight_layout()
+        image_filename = os.path.join(str(uuid.uuid4())[0:8] + ".png")
+        plt.savefig(image_filename)
+        return image_filename
+
+class Binaural:
+    def __init__(self, device):
+        self.device = device
+        self.model_file = './mono2binaural/useful_ckpts/binaural_network.net'
+        self.position_file = ['./mono2binaural/useful_ckpts/tx_positions.txt',
+                              './mono2binaural/useful_ckpts/tx_positions2.txt',
+                              './mono2binaural/useful_ckpts/tx_positions3.txt',
+                              './mono2binaural/useful_ckpts/tx_positions4.txt',
+                              './mono2binaural/useful_ckpts/tx_positions5.txt']
+        self.net = BinauralNetwork(view_dim=7,
+                      warpnet_layers=4,
+                      warpnet_channels=64,
+                      )
+        self.net.load_from_file(self.model_file)
+        self.sr = 48000
+    def inference(self, audio_path):
+        mono, sr  = librosa.load(path=audio_path, sr=self.sr, mono=True)
+        mono = torch.from_numpy(mono)
+        mono = mono.unsqueeze(0)
+        import numpy as np
+        import random
+        rand_int = random.randint(0,4)
+        view = np.loadtxt(self.position_file[rand_int]).transpose().astype(np.float32)
+        view = torch.from_numpy(view)
+        if not view.shape[-1] * 400 == mono.shape[-1]:
+            mono = mono[:,:(mono.shape[-1]//400)*400] # 
+            if view.shape[1]*400 > mono.shape[1]:
+                m_a = view.shape[1] - mono.shape[-1]//400 
+                rand_st = random.randint(0,m_a)
+                view = view[:,m_a:m_a+(mono.shape[-1]//400)] # 
+        # binauralize and save output
+        self.net.eval().to(self.device)
+        mono, view = mono.to(self.device), view.to(self.device)
+        chunk_size = 48000  # forward in chunks of 1s
+        rec_field =  1000  # add 1000 samples as "safe bet" since warping has undefined rec. field
+        rec_field -= rec_field % 400  # make sure rec_field is a multiple of 400 to match audio and view frequencies
+        chunks = [
+            {
+                "mono": mono[:, max(0, i-rec_field):i+chunk_size],
+                "view": view[:, max(0, i-rec_field)//400:(i+chunk_size)//400]
+            }
+            for i in range(0, mono.shape[-1], chunk_size)
+        ]
+        for i, chunk in enumerate(chunks):
+            with torch.no_grad():
+                mono = chunk["mono"].unsqueeze(0)
+                view = chunk["view"].unsqueeze(0)
+                binaural = self.net(mono, view).squeeze(0)
+                if i > 0:
+                    binaural = binaural[:, -(mono.shape[-1]-rec_field):]
+                chunk["binaural"] = binaural
+        binaural = torch.cat([chunk["binaural"] for chunk in chunks], dim=-1)
+        binaural = torch.clamp(binaural, min=-1, max=1).cpu()
+        #binaural = chunked_forwarding(net, mono, view)
+        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        import torchaudio
+        torchaudio.save(audio_filename, binaural, sr)
+        #soundfile.write(audio_filename, binaural, samplerate = 48000)
+        print(f"Processed Binaural.run, audio_filename: {audio_filename}")
+        return audio_filename
+
 class ConversationBot:
     def __init__(self):
         print("Initializing AudioChatGPT")
@@ -501,6 +634,8 @@ class ConversationBot:
         self.asr = ASR(device="cuda:1")
         self.t2s = T2S(device="cuda:0")
         self.tts_ood = TTS_OOD(device="cuda:0")
+        self.detection = SoundDetection(device="cuda:0")
+        self.binaural = Binaural(device="cuda:1")
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
         self.tools = [
             Tool(name="Generate Image From User Input Text", func=self.t2i.inference,
@@ -531,7 +666,13 @@ class ConversationBot:
                              "The input to this tool should be a string, representing the image_path. "),
             Tool(name="Transcribe speech", func=self.asr.inference,
                  description="useful for when you want to know the text corresponding to a human speech, receives audio_path as input."
-                             "The input to this tool should be a string, representing the audio_path.")]
+                             "The input to this tool should be a string, representing the audio_path."),
+            Tool(name="Detect the sound event from the audio", func=self.detection.inference,
+                 description="useful for when you want to know what event in the audio and the sound event start or end time, receives audio_path as input. "
+                             "The input to this tool should be a string, representing the audio_path. "),
+            Tool(name="Sythesize binaural audio from a mono audio input", func=self.binaural.inference,
+                 description="useful for when you want to transfer your mono audio into binaural audio, receives audio_path as input. "
+                             "The input to this tool should be a string, representing the audio_path. ")]
         self.agent = initialize_agent(
             self.tools,
             self.llm,
