@@ -18,7 +18,7 @@ Here we list the capability of AudioGPT at this time. More supported models and 
 |    Speech Enhancement     |          [ConvTasNet]()         |  WIP   |
 |    Speech Separation      |          [TF-GridNet]()         |  WIP   |
 |    Speech Translation     |          [Multi-decoder]()      |  WIP   |
-|  Mono-to-Binaural Speech  |          []()      |  WIP   |
+|  Mono-to-Binaural Speech  |          [NeuralWarp]()         |  Yes   |
 
 ### Sing
 
@@ -32,6 +32,8 @@ Here we list the capability of AudioGPT at this time. More supported models and 
 |       Text-to-Audio       |        [Make-An-Audio]()        |  Yes   |
 |     Audio Inpainting      |        [Make-An-Audio]()        |  WIP   |
 |      Image-to-Audio       |        [Make-An-Audio]()        |  Yes   |
+|     sound detection       |        [Audio-transformer]()    |  Yes   |
+
 
 ### Talking Head
 
