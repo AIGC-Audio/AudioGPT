@@ -4,7 +4,7 @@ from audio_to_face.inference.postnet_infer import PostnetInfer
 from audio_to_face.inference.lm3d_radnerf_infer import LM3d_RADNeRFInfer
 from audio_to_face.utils.commons.hparams import set_hparams, hparams
 
-class audio_to_faceInfer:
+class GeneFaceInfer:
     def __init__(self, device=None):
         self.postnet_inferencer = PostnetInfer(hparams=set_hparams('audio_to_face/checkpoints/May/lm3d_postnet_sync_pitch/config.yaml'),device=device)
         self.radnerf_inferencer = LM3d_RADNeRFInfer(hparams=set_hparams('audio_to_face/checkpoints/May/lm3d_radnerf_torso/config.yaml'),device=device)
