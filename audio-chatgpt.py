@@ -456,6 +456,8 @@ class ConversationBot:
         self.t2s = T2S(device="cuda:2")
         self.i2a = I2A(device="cuda:1")
         self.asr = ASR(device="cuda:1")
+        self.geneface = GeneFace(device="cuda:0")
+
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
         self.tools = [
             Tool(name="Generate Image From User Input Text", func=self.t2i.inference,
@@ -473,6 +475,9 @@ class ConversationBot:
             Tool(name="Synthesize Speech Given the User Input Text", func=self.tts.inference,
                  description="useful for when you want to convert a user input text into speech audio it saved it to a file."
                              "The input to this tool should be a string, representing the text used to be converted to speech."),
+            Tool(name="Generate a talking human portrait video given a input Audio", func=self.geneface.inference,
+                 description="useful for when you want to generate a talking human portrait video given a input audio."
+                             "The input to this tool should be a string, representing the audio_path."),
 
             Tool(name="Generate Audio From The Image", func=self.i2a.inference,
                  description="useful for when you want to generate an audio based on an image."
@@ -509,7 +514,9 @@ class ConversationBot:
         #response = res['output'] + f"<audio src=audio_filename controls=controls></audio>"
         state = state + [(text, response)]
         print("Outputs:", state)
+        # return state, state, audio_filename
         return state, state, audio_filename
+    
 
     def run_image_or_audio(self, file, state, txt):
         file_type = file.name[-3:]
@@ -530,6 +537,7 @@ class ConversationBot:
             state = state + [(f"*{audio_filename}*", AI_prompt)]
             print("Outputs:", state)
             return state, state, txt + ' ' + audio_filename + ' ', audio_filename
+            # return state, state, txt + ' ' + audio_filename + ' ', audio_filename
         else:
             print("===============Running run_image =============")
             print("Inputs:", file, state)
@@ -554,6 +562,29 @@ class ConversationBot:
             print("Outputs:", state)
             return state, state, txt + ' ' + image_filename + ' ', None
 
+class GeneFace:
+    def __init__(self, device=None):
+        print("Initializing GeneFace model to %s" % device)
+        from audio_to_face.GeneFace_binding import GeneFaceInfer
+        if device is None:
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.device = device
+        self.geneface_model = GeneFaceInfer(device)
+        print("Loaded GeneFace model")
+
+    def inference(self, audio_path):
+        audio_base_name = os.path.basename(audio_path)[:-4]
+        out_video_name = audio_path.replace("audio","video").replace(".wav", ".mp4")
+        inp = {
+            'audio_source_name': audio_path,
+            'out_npy_name': f'geneface/tmp/{audio_base_name}.npy',
+            'cond_name': f'geneface/tmp/{audio_base_name}.npy',
+            'out_video_name': out_video_name,
+            'tmp_imgs_dir': f'video/tmp_imgs',
+        }
+        self.geneface_model.infer_once(inp)
+        return out_video_name
+    
 if __name__ == '__main__':
     bot = ConversationBot()
     with gr.Blocks(css="#chatbot .overflow-y-auto{height:500px}") as demo:
