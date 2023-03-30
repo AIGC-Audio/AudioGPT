@@ -31,5 +31,5 @@ class GeneFaceInfer:
         self.infer_once(inp)
 
 if __name__ == '__main__':
-    infer = audio_to_faceInfer()
+    infer = GeneFaceInfer()
     infer.example_run()
