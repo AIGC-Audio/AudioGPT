@@ -517,7 +517,7 @@ class ConversationBot:
         self.a2t = A2T(device="cuda:2")
         self.asr = ASR(device="cuda:1")
         self.inpaint = Inpaint(device="cuda:0")
-        #self.tts_ood = TTS_OOD(device="cuda:0")
+        self.tts_ood = TTS_OOD(device="cuda:0")
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
         self.tools = [
             Tool(name="Generate Image From User Input Text", func=self.t2i.inference,
@@ -529,11 +529,11 @@ class ConversationBot:
             Tool(name="Generate Audio From User Input Text", func=self.t2a.inference,
                  description="useful for when you want to generate an audio from a user input text and it saved it to a file."
                              "The input to this tool should be a string, representing the text used to generate audio."),
-            # Tool(
-            #     name="Generate human speech with style derived from a speech reference and user input text and save it to a file", func= self.tts_ood.inference,
-            #     description="useful for when you want to generate speech samples with styles (e.g., timbre, emotion, and prosody) derived from a reference custom voice."
-            #                 "Like: Generate a speech with style transferred from this voice. The text is xxx., or speak using the voice of this audio. The text is xxx."
-            #                 "The input to this tool should be a comma seperated string of two, representing reference audio path and input text."),
+            Tool(
+                name="Generate human speech with style derived from a speech reference and user input text and save it to a file", func= self.tts_ood.inference,
+                description="useful for when you want to generate speech samples with styles (e.g., timbre, emotion, and prosody) derived from a reference custom voice."
+                            "Like: Generate a speech with style transferred from this voice. The text is xxx., or speak using the voice of this audio. The text is xxx."
+                            "The input to this tool should be a comma seperated string of two, representing reference audio path and input text."),
             Tool(name="Generate singing voice From User Input Text, Note and Duration Sequence", func= self.t2s.inference,
                  description="useful for when you want to generate a piece of singing voice (Optional: from User Input Text, Note and Duration Sequence) and save it to a file."
                              "If Like: Generate a piece of singing voice, the input to this tool should be \"\" since there is no User Input Text, Note and Duration Sequence ."
