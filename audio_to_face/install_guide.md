@@ -1,6 +1,8 @@
+首先安装python环境
 conda create -n geneface python=3.9 -y
 conda activate geneface
 # install pytorch with conda, older versions also work
+这里的cudatoolkit的版本要保证和本地/usr/local/cuda的版本一样，不然最后一步安装cuda extension会出错
 conda install pytorch=1.12 torchvision cudatoolkit=11.3.1 -c pytorch -c nvidia -y
 # install pytorch-3d
 conda install -c fvcore -c iopath -c conda-forge fvcore iopath -y
@@ -9,6 +11,7 @@ conda install pytorch3d -c pytorch3d -y # 0.7.2 recommended
 # other dependencies, including tensorflow-gpu=2.x
 sudo apt-get install libasound2-dev portaudio19-dev # dependency for pyaudio
 pip install -r requirements.txt 
+最后安装cuda extension，需要保证和cudatoolkit版本一致。
 bash docs/prepare_env/install_ext.sh
 
 
