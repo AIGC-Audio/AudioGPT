@@ -1,0 +1,29 @@
+numpy # ==1.23.0
+pandas
+transformers
+scipy
+scikit-learn
+scikit-image
+tensorflow # you can flexible it, this is gpu version
+tensorboard
+tensorboardX
+python_speech_features
+resampy
+opencv_python
+face_alignment
+matplotlib
+configargparse
+librosa==0.9.2
+praat-parselmouth==0.4.3
+trimesh
+kornia==0.5.0
+PyMCubes
+lpips
+setuptools # ==59.5.0
+ffmpeg-python
+moviepy
+dearpygui
+ninja
+pyaudio # for extract esperanto
+mediapipe
+protobuf
