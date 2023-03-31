@@ -517,7 +517,7 @@ class ConversationBot:
         self.a2t = A2T(device="cuda:2")
         self.asr = ASR(device="cuda:1")
         self.inpaint = Inpaint(device="cuda:0")
-        self.tts_ood = TTS_OOD(device="cuda:0")
+        #self.tts_ood = TTS_OOD(device="cuda:0")
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
         self.tools = [
             Tool(name="Generate Image From User Input Text", func=self.t2i.inference,
@@ -529,11 +529,11 @@ class ConversationBot:
             Tool(name="Generate Audio From User Input Text", func=self.t2a.inference,
                  description="useful for when you want to generate an audio from a user input text and it saved it to a file."
                              "The input to this tool should be a string, representing the text used to generate audio."),
-            Tool(
-                name="Generate human speech with style derived from a speech reference and user input text and save it to a file", func= self.tts_ood.inference,
-                description="useful for when you want to generate speech samples with styles (e.g., timbre, emotion, and prosody) derived from a reference custom voice."
-                            "Like: Generate a speech with style transferred from this voice. The text is xxx., or speak using the voice of this audio. The text is xxx."
-                            "The input to this tool should be a comma seperated string of two, representing reference audio path and input text."),
+            # Tool(
+            #     name="Generate human speech with style derived from a speech reference and user input text and save it to a file", func= self.tts_ood.inference,
+            #     description="useful for when you want to generate speech samples with styles (e.g., timbre, emotion, and prosody) derived from a reference custom voice."
+            #                 "Like: Generate a speech with style transferred from this voice. The text is xxx., or speak using the voice of this audio. The text is xxx."
+            #                 "The input to this tool should be a comma seperated string of two, representing reference audio path and input text."),
             Tool(name="Generate singing voice From User Input Text, Note and Duration Sequence", func= self.t2s.inference,
                  description="useful for when you want to generate a piece of singing voice (Optional: from User Input Text, Note and Duration Sequence) and save it to a file."
                              "If Like: Generate a piece of singing voice, the input to this tool should be \"\" since there is no User Input Text, Note and Duration Sequence ."
@@ -575,7 +575,7 @@ class ConversationBot:
             response = res['output']
             state = state + [(text, response)]
             print("Outputs:", state)
-            return state, state, None, None
+            return state, state, gr.Audio.update(visible=False), gr.Image.update(visible=False), gr.Button.update(visible=False)
         else:
             tool = res['intermediate_steps'][0][0].tool
             if tool == "Generate Image From User Input Text" or tool == "Generate Text From The Audio" or tool == "Transcribe speech":
@@ -583,22 +583,23 @@ class ConversationBot:
                 response = re.sub('(image/\S*png)', lambda m: f'![](/file={m.group(0)})*{m.group(0)}*', res['output'])
                 state = state + [(text, response)]
                 print("Outputs:", state)
-                return state, state, None, None
+                return state, state, gr.Audio.update(visible=False), gr.Image.update(visible=False), gr.Button.update(visible=False)
             elif tool == "Audio Inpainting":
                 audio_filename = res['intermediate_steps'][0][0].tool_input
                 image_filename = res['intermediate_steps'][0][1]
+               # self.is_visible(True)
                 print("======>Current memory:\n %s" % self.agent.memory)
                 print(res)
                 response = res['output']
                 state = state + [(text, response)]
                 print("Outputs:", state)
-                return state, state, audio_filename, image_filename
+                return state, state, gr.Audio.update(value=audio_filename,visible=True), gr.Image.update(value=image_filename,visible=True), gr.Button.update(visible=True)
             print("======>Current memory:\n %s" % self.agent.memory)
             response = re.sub('(image/\S*png)', lambda m: f'![](/file={m.group(0)})*{m.group(0)}*', res['output'])
             audio_filename = res['intermediate_steps'][0][1]
             state = state + [(text, response)]
             print("Outputs:", state)
-            return state, state, audio_filename, None
+            return state, state, gr.Audio.update(value=audio_filename,visible=True), gr.Image.update(visible=False), gr.Button.update(visible=False)
 
     def run_image_or_audio(self, file, state, txt):
         file_type = file.name[-3:]
@@ -618,7 +619,7 @@ class ConversationBot:
             #state = state + [(f"<audio src=audio_filename controls=controls></audio>*{audio_filename}*", AI_prompt)]
             state = state + [(f"*{audio_filename}*", AI_prompt)]
             print("Outputs:", state)
-            return state, state, txt + ' ' + audio_filename + ' ', audio_filename
+            return state, state, txt + ' ' + audio_filename + ' ', gr.Audio.update(value=audio_filename,visible=True)
         else:
             print("===============Running run_image =============")
             print("Inputs:", file, state)
@@ -641,7 +642,7 @@ class ConversationBot:
             print("======>Current memory:\n %s" % self.agent.memory)
             state = state + [(f"![](/file={image_filename})*{image_filename}*", AI_prompt)]
             print("Outputs:", state)
-            return state, state, txt + ' ' + image_filename + ' ', None
+            return state, state, txt + ' ' + image_filename + ' ', gr.Audio.update(visible=False)
 
     def inpainting(self, state, audio_filename, image_filename):
         print("===============Running inpainting =============")
@@ -654,7 +655,13 @@ class ConversationBot:
         print("======>Current memory:\n %s" % self.agent.memory)
         state = state + [(f"Audio Inpainting", AI_prompt)]
         print("Outputs:", state)
-        return state, state, None, new_audio_filename
+        return state, state, gr.Image.update(visible=False), gr.Audio.update(value=new_audio_filename, visible=True), gr.Button.update(visible=False)
+    def clear_audio(self):
+        return gr.Audio.update(value=None, visible=False)
+    def clear_image(self):
+        return gr.Image.update(value=None, visible=False)
+    def clear_button(self):
+        return gr.Button.update(visible=False)
 
 
 if __name__ == '__main__':
@@ -672,19 +679,22 @@ if __name__ == '__main__':
             with gr.Column(scale=0.15, min_width=0):
                 btn = gr.UploadButton("Upload", file_types=["image","audio"])
         with gr.Column():
-            outaudio = gr.Audio()
+            outaudio = gr.Audio(visible=False)
         with gr.Row():
             with gr.Column():
-                show_mel = gr.Image(type="filepath",tool='sketch')
-                run_button = gr.Button("Predict Masked Place")
+                show_mel = gr.Image(type="filepath",tool='sketch',visible=False)
+                run_button = gr.Button("Predict Masked Place",visible=False)
+
             
-        txt.submit(bot.run_text, [txt, state], [chatbot, state, outaudio, show_mel])
+        txt.submit(bot.run_text, [txt, state], [chatbot, state, outaudio, show_mel, run_button])
         txt.submit(lambda: "", None, txt)
         btn.upload(bot.run_image_or_audio, [btn, state, txt], [chatbot, state, txt, outaudio])
-        run_button.click(bot.inpainting, [state, outaudio, show_mel], [chatbot, state, show_mel, outaudio])
+        run_button.click(bot.inpainting, [state, outaudio, show_mel], [chatbot, state, show_mel, outaudio, run_button])
         clear.click(bot.memory.clear)
         clear.click(lambda: [], None, chatbot)
         clear.click(lambda: [], None, state)
-        clear.click(lambda: None, None, show_mel)
-        clear.click(lambda: None, None, outaudio)
+        clear.click(lambda:None, None, txt)
+        clear.click(bot.clear_button, None, run_button)
+        clear.click(bot.clear_image, None, show_mel)
+        clear.click(bot.clear_audio, None, outaudio)
         demo.launch(server_name="0.0.0.0", server_port=7860, share=True)
