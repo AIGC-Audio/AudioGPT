@@ -1,0 +1,47 @@
+adam_b1: 0.8
+adam_b2: 0.99
+batch_size: 24
+dist_config:
+  dist_backend: nccl
+  dist_url: tcp://localhost:54321
+  world_size: 1
+fmax: 8000
+fmax_for_loss: null
+fmin: 0
+hop_size: 256
+learning_rate: 0.0002
+lr_decay: 0.999
+n_fft: 1024
+num_gpus: 0
+num_mels: 80
+num_workers: 4
+resblock: '1'
+resblock_dilation_sizes:
+- - 1
+  - 3
+  - 5
+- - 1
+  - 3
+  - 5
+- - 1
+  - 3
+  - 5
+resblock_kernel_sizes:
+- 3
+- 7
+- 11
+sampling_rate: 16000
+seed: 1234
+segment_size: 8192
+upsample_initial_channel: 512
+upsample_kernel_sizes:
+- 16
+- 16
+- 4
+- 4
+upsample_rates:
+- 8
+- 8
+- 2
+- 2
+win_size: 1024

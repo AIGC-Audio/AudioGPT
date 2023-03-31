@@ -1,0 +1,24 @@
+seed: 1337
+log_code_state: True
+# patterns to ignore when backing up the code folder
+patterns_to_ignore: ['logs', '.git', '__pycache__', 'data', 'checkpoints', '*.pt']
+
+# data:
+mels_path: '/home/nvme/data/vggsound/features/melspec_10s_22050hz/'
+spec_shape: [80, 860]
+cropped_size: [80, 848]
+random_crop: False
+
+# train:
+device: 'cuda:0'
+batch_size: 8
+num_workers: 0
+optimizer: adam
+betas: [0.9, 0.999]
+momentum: 0.9
+learning_rate: 3e-4
+weight_decay: 0
+num_epochs: 100
+patience: 3
+logdir: './logs'
+cls_weights_in_loss: False
