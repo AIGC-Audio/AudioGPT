@@ -1,8 +1,0 @@
-base_config:
-  - ./ps_adv.yaml
-
-use_bert: true
-grad_bert: 0.1
-load_bert_from_pretrained: true
-bert_trainable_start_block: 0
-bert_num_blocks: 12

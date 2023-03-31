@@ -1,5 +1,0 @@
-base_config: egs/egs_bases/asr/base.yaml
-raw_data_dir: 'data/raw/WenetSpeech'
-processed_data_dir: 'data/processed/wenetspeech'
-binary_data_dir: 'data/binary/wenetspeech'
-pre_align_cls: egs.datasets.audio.wenetspeech.pre_align.WenetSpeechPreAlign

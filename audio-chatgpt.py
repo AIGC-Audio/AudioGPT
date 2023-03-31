@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_sing/DiffSinger'))
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'NeuralSeq'))
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_audio/Make_An_Audio'))
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_audio/Make_An_Audio_img'))
 import gradio as gr
@@ -10,7 +10,6 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, CLIPSegProcessor, 
 import torch
 from diffusers import StableDiffusionPipeline
 from diffusers import StableDiffusionInstructPix2PixPipeline, EulerAncestralDiscreteScheduler
-import os
 from langchain.agents.initialize import initialize_agent
 from langchain.agents.tools import Tool
 from langchain.chains.conversation.memory import ConversationBufferMemory
@@ -18,7 +17,6 @@ from langchain.llms.openai import OpenAI
 import re
 import uuid
 import soundfile
-from scipy.io import wavfile
 from diffusers import StableDiffusionInpaintPipeline
 from PIL import Image
 import numpy as np
@@ -36,15 +34,14 @@ from vocoder.bigvgan.models import VocoderBigVGAN
 from ldm.models.diffusion.ddim import DDIMSampler
 from wav_evaluation.models.CLAPWrapper import CLAPWrapper
 from inference.svs.ds_e2e import DiffSingerE2EInfer
+from audio_to_text.inference_waveform import AudioCapModel
 import whisper
-from text_to_speech.TTS_binding import TTSInference
-
-import torch
 from inference.svs.ds_e2e import DiffSingerE2EInfer
 from inference.tts.GenerSpeech import GenerSpeechInfer
+from inference.tts.SyntaSpeech import TTSInference
 from utils.hparams import set_hparams
 from utils.hparams import hparams as hp
-from utils.os_utils import move_file
+import scipy.io.wavfile as wavfile
 AUDIO_CHATGPT_PREFIX = """Audio ChatGPT
 AUdio ChatGPT can not directly read audios, but it has a list of tools to finish different audio synthesis tasks. Each audio will have a file name formed as "audio/xxx.wav". When talking about audios, Visual ChatGPT is very strict to the file name and will never fabricate nonexistent files. 
 AUdio ChatGPT is able to use tools in a sequence, and is loyal to the tool observation outputs rather than faking the audio content and audio file name. It will remember to provide the file name from the last tool observation, if a new audio is generated.
@@ -299,17 +296,28 @@ class I2A:
         print(f"Processed I2a.run, image_filename: {image}, audio_filename: {audio_filename}")
         return audio_filename
 
+
 class TTS:
     def __init__(self, device=None):
-        self.inferencer = TTSInference(device)
-    
+        if device is None:
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print("Initializing PortaSpeech to %s" % device)
+        self.device = device
+        self.exp_name = 'checkpoints/ps_adv_baseline'
+        self.set_model_hparams()
+        self.inferencer = TTSInference(self.hp, device)
+
+    def set_model_hparams(self):
+        set_hparams(exp_name=self.exp_name, print_hparams=False)
+        self.hp = hp
+
     def inference(self, text):
         global temp_audio_filename
+        self.set_model_hparams()
         inp = {"text": text}
         out = self.inferencer.infer_once(inp)
         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
-        temp_audio_filename = audio_filename
-        soundfile.write(audio_filename, out, samplerate = 22050)
+        soundfile.write(audio_filename, out, samplerate=22050)
         return audio_filename
     
 class T2S:
@@ -319,7 +327,7 @@ class T2S:
         print("Initializing DiffSinger to %s" % device)
         self.device = device
         self.exp_name = 'checkpoints/0831_opencpop_ds1000'
-        self.config= 'text_to_sing/DiffSinger/usr/configs/midi/e2e/opencpop/ds1000.yaml'
+        self.config= 'NeuralSeq/usr/configs/midi/e2e/opencpop/ds1000.yaml'
         self.set_model_hparams()
         self.pipe = DiffSingerE2EInfer(self.hp, device)
         self.defualt_inp = {
@@ -354,7 +362,7 @@ class TTS_OOD:
         print("Initializing GenerSpeech to %s" % device)
         self.device = device
         self.exp_name = 'checkpoints/GenerSpeech'
-        self.config = 'text_to_sing/DiffSinger/modules/GenerSpeech/config/generspeech.yaml'
+        self.config = 'NeuralSeq/modules/GenerSpeech/config/generspeech.yaml'
         self.set_model_hparams()
         self.pipe = GenerSpeechInfer(self.hp, device)
 
