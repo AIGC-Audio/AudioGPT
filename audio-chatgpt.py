@@ -271,7 +271,6 @@ class TTS:
         self.hp = hp
 
     def inference(self, text):
-        global temp_audio_filename
         self.set_model_hparams()
         inp = {"text": text}
         out = self.inferencer.infer_once(inp)
