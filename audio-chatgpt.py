@@ -6,10 +6,11 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Neura
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_audio/Make_An_Audio'))
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_audio/Make_An_Audio_img'))
 import gradio as gr
-from transformers import AutoModelForCausalLM, AutoTokenizer, CLIPSegProcessor, CLIPSegForImageSegmentation
+import matplotlib
+import librosa
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 from diffusers import StableDiffusionPipeline
-from diffusers import StableDiffusionInstructPix2PixPipeline, EulerAncestralDiscreteScheduler
 from langchain.agents.initialize import initialize_agent
 from langchain.agents.tools import Tool
 from langchain.chains.conversation.memory import ConversationBufferMemory
@@ -17,20 +18,13 @@ from langchain.llms.openai import OpenAI
 import re
 import uuid
 import soundfile
-from scipy.io import wavfile
-from diffusers import StableDiffusionInpaintPipeline
 from PIL import Image
 import numpy as np
 from omegaconf import OmegaConf
-from transformers import pipeline, BlipProcessor, BlipForConditionalGeneration, BlipForQuestionAnswering
-import cv2
-import einops
-from pytorch_lightning import seed_everything
-import random
+from transformers import pipeline, BlipProcessor, BlipForConditionalGeneration
+from einops import repeat
 from ldm.util import instantiate_from_config
 from ldm.data.extract_mel_spectrogram import TRANSFORMS_16000
-from pathlib import Path
-from vocoder.hifigan.modules import VocoderHifigan
 from vocoder.bigvgan.models import VocoderBigVGAN
 from ldm.models.diffusion.ddim import DDIMSampler
 from wav_evaluation.models.CLAPWrapper import CLAPWrapper
@@ -110,6 +104,15 @@ def initialize_model(config, ckpt, device):
     sampler = DDIMSampler(model)
     return sampler
 
+def initialize_model_inpaint(config, ckpt):
+    config = OmegaConf.load(config)
+    model = instantiate_from_config(config.model)
+    model.load_state_dict(torch.load(ckpt,map_location='cpu')["state_dict"], strict=False)
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    model = model.to(device)
+    print(model.device,device,model.cond_stage_model.device)
+    sampler = DDIMSampler(model)
+    return sampler
 
 def select_best_audio(prompt,wav_list):
     clap_model = CLAPWrapper('useful_ckpts/CLAP/CLAP_weights_2022.pth','useful_ckpts/CLAP/config.yml',use_cuda=torch.cuda.is_available())
@@ -123,6 +126,7 @@ def select_best_audio(prompt,wav_list):
     max_index = np.array(score_list).argmax()
     print(score_list,max_index)
     return wav_list[max_index]
+
 
 class T2I:
     def __init__(self, device):
@@ -348,9 +352,10 @@ class Inpaint:
     def __init__(self, device):
         print("Initializing Make-An-Audio-inpaint to %s" % device)
         self.device = device
-        self.sampler = initialize_model('text_to_audio/Make_An_Audio_inpaint/configs/inpaint/txt2audio_args.yaml', 'text_to_audio/Make_An_Audio_inpaint/useful_ckpts/inpaint7_epoch00047.ckpt')
+        self.sampler = initialize_model_inpaint('text_to_audio/Make_An_Audio_inpaint/configs/inpaint/txt2audio_args.yaml', 'text_to_audio/Make_An_Audio_inpaint/useful_ckpts/inpaint7_epoch00047.ckpt')
         self.vocoder = VocoderBigVGAN('./vocoder/logs/bigv16k53w',device=device)
-    def make_batch_sd(mel, mask, num_samples=1):
+        self.cmap_transform = matplotlib.cm.viridis
+    def make_batch_sd(self, mel, mask, num_samples=1):
 
         mel = torch.from_numpy(mel)[None,None,...].to(dtype=torch.float32)
         mask = torch.from_numpy(mask)[None,None,...].to(dtype=torch.float32)
@@ -366,10 +371,11 @@ class Inpaint:
              "masked_mel": repeat(masked_mel.to(device=self.device), "1 ... -> n ...", n=num_samples),
         }
         return batch
-    def gen_mel(input_audio):
-        sr,ori_wav = input_audio
+    def gen_mel(self, input_audio_path):
+        SAMPLE_RATE = 16000
+        sr, ori_wav = wavfile.read(input_audio_path)
+        print("gen_mel")
         print(sr,ori_wav.shape,ori_wav)
-
         ori_wav = ori_wav.astype(np.float32, order='C') / 32768.0 # order='C'是以C语言格式存储，不用管
         if len(ori_wav.shape)==2:# stereo
             ori_wav = librosa.to_mono(ori_wav.T)# gradio load wav shape could be (wav_len,2) but librosa expects (2,wav_len)
@@ -385,12 +391,35 @@ class Inpaint:
 
         mel = TRANSFORMS_16000(input_wav)
         return mel
-    def show_mel_fn(input_audio):
+    def gen_mel_audio(self, input_audio):
+        SAMPLE_RATE = 16000
+        sr,ori_wav = input_audio
+        print("gen_mel_audio")
+        print(sr,ori_wav.shape,ori_wav)
+
+        ori_wav = ori_wav.astype(np.float32, order='C') / 32768.0 # order='C'是以C语言格式存储，不用管
+        if len(ori_wav.shape)==2:# stereo
+            ori_wav = librosa.to_mono(ori_wav.T)# gradio load wav shape could be (wav_len,2) but librosa expects (2,wav_len)
+        print(sr,ori_wav.shape,ori_wav)
+        ori_wav = librosa.resample(ori_wav,orig_sr = sr,target_sr = SAMPLE_RATE)
+
+        mel_len,hop_size = 848,256
+        input_len = mel_len * hop_size
+        if len(ori_wav) < input_len:
+            input_wav = np.pad(ori_wav,(0,mel_len*hop_size),constant_values=0)
+        else:
+            input_wav = ori_wav[:input_len]
+        mel = TRANSFORMS_16000(input_wav)
+        return mel
+    def show_mel_fn(self, input_audio_path):
         crop_len = 500 # the full mel cannot be showed due to gradio's Image bug when using tool='sketch'
-        crop_mel = self.gen_mel(input_audio)[:,:crop_len]
-        color_mel = cmap_transform(crop_mel)
-        return Image.fromarray((color_mel*255).astype(np.uint8))
-    def inpaint(batch, seed, ddim_steps, num_samples=1, W=512, H=512):
+        crop_mel = self.gen_mel(input_audio_path)[:,:crop_len]
+        color_mel = self.cmap_transform(crop_mel)
+        image = Image.fromarray((color_mel*255).astype(np.uint8))
+        image_filename = os.path.join('image', str(uuid.uuid4())[0:8] + ".png")
+        image.save(image_filename)
+        return image_filename
+    def inpaint(self, batch, seed, ddim_steps, num_samples=1, W=512, H=512):
         model = self.sampler.model
 
         prng = np.random.RandomState(seed)
@@ -411,7 +440,6 @@ class Inpaint:
         x_samples_ddim = model.decode_first_stage(samples_ddim)
 
 
-        mask = batch["mask"]# [-1,1]
         mel = torch.clamp((batch["mel"]+1.0)/2.0,min=0.0, max=1.0)
         mask = torch.clamp((batch["mask"]+1.0)/2.0,min=0.0, max=1.0)
         predicted_mel = torch.clamp((x_samples_ddim+1.0)/2.0,min=0.0, max=1.0)
@@ -420,17 +448,19 @@ class Inpaint:
         inapint_wav = self.vocoder.vocode(inpainted)
 
         return inpainted, inapint_wav
-    def predict(input_audio,mel_and_mask,ddim_steps,seed):
-        show_mel = np.array(mel_and_mask['image'].convert("L"))/255 # 由于展示的mel只展示了一部分，所以需要重新从音频生成mel
-        mask = np.array(mel_and_mask["mask"].convert("L"))/255
-
+    def inference(self, input_audio, mel_and_mask, seed = 55, ddim_steps = 100):
+        SAMPLE_RATE = 16000
+        torch.set_grad_enabled(False)
+        mel_img = Image.open(mel_and_mask['image'])
+        mask_img = Image.open(mel_and_mask["mask"])
+        show_mel = np.array(mel_img.convert("L"))/255 # 由于展示的mel只展示了一部分，所以需要重新从音频生成mel
+        mask = np.array(mask_img.convert("L"))/255
         mel_bins,mel_len = 80,848
-
-        input_mel = self.gen_mel(input_audio)[:,:mel_len]# 由于展示的mel只展示了一部分，所以需要重新从音频生成mel
+        input_mel = self.gen_mel_audio(input_audio)[:,:mel_len]# 由于展示的mel只展示了一部分，所以需要重新从音频生成mel
         mask = np.pad(mask,((0,0),(0,mel_len-mask.shape[1])),mode='constant',constant_values=0)# 将mask填充到原来的mel的大小
         print(mask.shape,input_mel.shape)
         with torch.no_grad():
-            batch = make_batch_sd(input_mel,mask,device,num_samples=1)
+            batch = self.make_batch_sd(input_mel,mask,num_samples=1)
             inpainted,gen_wav = self.inpaint(
                 batch=batch,
                 seed=seed,
@@ -439,11 +469,16 @@ class Inpaint:
                 H=mel_bins, W=mel_len
             )
         inpainted = inpainted[:,:show_mel.shape[1]]
-        color_mel = cmap_transform(inpainted)
+        color_mel = self.cmap_transform(inpainted)
         input_len = int(input_audio[1].shape[0] * SAMPLE_RATE / input_audio[0])
         gen_wav = (gen_wav * 32768).astype(np.int16)[:input_len]
-        return Image.fromarray((color_mel*255).astype(np.uint8)),(SAMPLE_RATE,gen_wav)
-
+        image = Image.fromarray((color_mel*255).astype(np.uint8))
+        image_filename = os.path.join('image', str(uuid.uuid4())[0:8] + ".png")
+        image.save(image_filename)
+        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        soundfile.write(audio_filename, gen_wav, samplerate = 16000)
+        return image_filename, audio_filename
+    
 class ASR:
     def __init__(self, device):
         print("Initializing Whisper to %s" % device)
@@ -481,6 +516,7 @@ class ConversationBot:
         self.i2a = I2A(device="cuda:1")
         self.a2t = A2T(device="cuda:2")
         self.asr = ASR(device="cuda:1")
+        self.inpaint = Inpaint(device="cuda:0")
         self.tts_ood = TTS_OOD(device="cuda:0")
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
         self.tools = [
@@ -513,6 +549,9 @@ class ConversationBot:
             Tool(name="Generate Text From The Audio", func=self.a2t.inference,
                  description="useful for when you want to describe an audio in text, receives audio_path as input."
                              "The input to this tool should be a string, representing the audio_path."),
+            Tool(name="Audio Inpainting", func=self.inpaint.show_mel_fn,
+                 description="useful for when you want to inpaint a mel spectrum of an audio and predict this audio, this tool will generate a mel spectrum and you can inpaint it, receives audio_path as input, "
+                             "The input to this tool should be a string, representing the audio_path."),
             Tool(name="Transcribe speech", func=self.asr.inference,
                  description="useful for when you want to know the text corresponding to a human speech, receives audio_path as input."
                              "The input to this tool should be a string, representing the audio_path.")]
@@ -536,7 +575,7 @@ class ConversationBot:
             response = res['output']
             state = state + [(text, response)]
             print("Outputs:", state)
-            return state, state, None
+            return state, state, gr.Audio.update(visible=False), gr.Image.update(visible=False), gr.Button.update(visible=False)
         else:
             tool = res['intermediate_steps'][0][0].tool
             if tool == "Generate Image From User Input Text" or tool == "Generate Text From The Audio" or tool == "Transcribe speech":
@@ -544,13 +583,23 @@ class ConversationBot:
                 response = re.sub('(image/\S*png)', lambda m: f'![](/file={m.group(0)})*{m.group(0)}*', res['output'])
                 state = state + [(text, response)]
                 print("Outputs:", state)
-                return state, state, None
+                return state, state, gr.Audio.update(visible=False), gr.Image.update(visible=False), gr.Button.update(visible=False)
+            elif tool == "Audio Inpainting":
+                audio_filename = res['intermediate_steps'][0][0].tool_input
+                image_filename = res['intermediate_steps'][0][1]
+               # self.is_visible(True)
+                print("======>Current memory:\n %s" % self.agent.memory)
+                print(res)
+                response = res['output']
+                state = state + [(text, response)]
+                print("Outputs:", state)
+                return state, state, gr.Audio.update(value=audio_filename,visible=True), gr.Image.update(value=image_filename,visible=True), gr.Button.update(visible=True)
             print("======>Current memory:\n %s" % self.agent.memory)
             response = re.sub('(image/\S*png)', lambda m: f'![](/file={m.group(0)})*{m.group(0)}*', res['output'])
-            #response = res['output'] + f"<audio src=audio_filename controls=controls></audio>"
+            audio_filename = res['intermediate_steps'][0][1]
             state = state + [(text, response)]
             print("Outputs:", state)
-            return state, state, audio_filename
+            return state, state, gr.Audio.update(value=audio_filename,visible=True), gr.Image.update(visible=False), gr.Button.update(visible=False)
 
     def run_image_or_audio(self, file, state, txt):
         file_type = file.name[-3:]
@@ -566,10 +615,11 @@ class ConversationBot:
                            "rather than directly imagine from my description. If you understand, say \"Received\". \n".format(audio_filename, description)
             AI_prompt = "Received.  "
             self.agent.memory.buffer = self.agent.memory.buffer + Human_prompt + 'AI: ' + AI_prompt
+            print("======>Current memory:\n %s" % self.agent.memory)
             #state = state + [(f"<audio src=audio_filename controls=controls></audio>*{audio_filename}*", AI_prompt)]
             state = state + [(f"*{audio_filename}*", AI_prompt)]
             print("Outputs:", state)
-            return state, state, txt + ' ' + audio_filename + ' ', audio_filename
+            return state, state, txt + ' ' + audio_filename + ' ', gr.Audio.update(value=audio_filename,visible=True)
         else:
             print("===============Running run_image =============")
             print("Inputs:", file, state)
@@ -592,7 +642,26 @@ class ConversationBot:
             print("======>Current memory:\n %s" % self.agent.memory)
             state = state + [(f"![](/file={image_filename})*{image_filename}*", AI_prompt)]
             print("Outputs:", state)
-            return state, state, txt + ' ' + image_filename + ' ', None
+            return state, state, txt + ' ' + image_filename + ' ', gr.Audio.update(visible=False)
+
+    def inpainting(self, state, audio_filename, image_filename):
+        print("===============Running inpainting =============")
+        print("Inputs:", state)
+        print("======>Previous memory:\n %s" % self.agent.memory)
+        inpaint = Inpaint(device="cuda:0")
+        new_image_filename, new_audio_filename = inpaint.inference(audio_filename, image_filename)
+        AI_prompt = "Here are the predict audio and the mel spectrum." + f"*{new_audio_filename}*" + f"![](/file={new_image_filename})*{new_image_filename}*"
+        self.agent.memory.buffer = self.agent.memory.buffer + 'AI: ' + AI_prompt
+        print("======>Current memory:\n %s" % self.agent.memory)
+        state = state + [(f"Audio Inpainting", AI_prompt)]
+        print("Outputs:", state)
+        return state, state, gr.Image.update(visible=False), gr.Audio.update(value=new_audio_filename, visible=True), gr.Button.update(visible=False)
+    def clear_audio(self):
+        return gr.Audio.update(value=None, visible=False)
+    def clear_image(self):
+        return gr.Image.update(value=None, visible=False)
+    def clear_button(self):
+        return gr.Button.update(visible=False)
 
 
 if __name__ == '__main__':
@@ -610,12 +679,22 @@ if __name__ == '__main__':
             with gr.Column(scale=0.15, min_width=0):
                 btn = gr.UploadButton("Upload", file_types=["image","audio"])
         with gr.Column():
-            outaudio = gr.Audio()
-        txt.submit(bot.run_text, [txt, state], [chatbot, state, outaudio])
+            outaudio = gr.Audio(visible=False)
+        with gr.Row():
+            with gr.Column():
+                show_mel = gr.Image(type="filepath",tool='sketch',visible=False)
+                run_button = gr.Button("Predict Masked Place",visible=False)
+
+
+        txt.submit(bot.run_text, [txt, state], [chatbot, state, outaudio, show_mel, run_button])
         txt.submit(lambda: "", None, txt)
         btn.upload(bot.run_image_or_audio, [btn, state, txt], [chatbot, state, txt, outaudio])
+        run_button.click(bot.inpainting, [state, outaudio, show_mel], [chatbot, state, show_mel, outaudio, run_button])
         clear.click(bot.memory.clear)
         clear.click(lambda: [], None, chatbot)
         clear.click(lambda: [], None, state)
-        clear.click(lambda: None, None, outaudio)
+        clear.click(lambda:None, None, txt)
+        clear.click(bot.clear_button, None, run_button)
+        clear.click(bot.clear_image, None, show_mel)
+        clear.click(bot.clear_audio, None, outaudio)
         demo.launch(server_name="0.0.0.0", server_port=7860, share=True)

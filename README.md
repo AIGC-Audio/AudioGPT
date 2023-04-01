@@ -5,7 +5,7 @@
 
 ## Capabilities
 
-Up-to-date link: https://eac422a9e2289d6b.gradio.app/
+Up-to-date link: https://93868c7fa583f4b5.gradio.app
 
 Here we list the capability of AudioGPT at this time. More supported models and tasks are comming soon. For prompt examples, refer to [asset](assets/README.md).
 
