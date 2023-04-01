@@ -76,26 +76,6 @@ def LayerNorm(normalized_shape, eps=1e-5, elementwise_affine=True, export=False)
             pass
     return torch.nn.LayerNorm(normalized_shape, eps, elementwise_affine)
 
-class LayerNorm_(torch.nn.LayerNorm):
-    """Layer normalization module.
-    :param int nout: output dim size
-    :param int dim: dimension to be normalized
-    """
-
-    def __init__(self, nout, dim=-1, eps=1e-5):
-        """Construct an LayerNorm object."""
-        super(LayerNorm_, self).__init__(nout, eps=eps)
-        self.dim = dim
-
-    def forward(self, x):
-        """Apply layer normalization.
-        :param torch.Tensor x: input tensor
-        :return: layer normalized tensor
-        :rtype torch.Tensor
-        """
-        if self.dim == -1:
-            return super(LayerNorm_, self).forward(x)
-        return super(LayerNorm_, self).forward(x.transpose(1, -1)).transpose(1, -1)
 def Linear(in_features, out_features, bias=True):
     m = nn.Linear(in_features, out_features, bias)
     nn.init.xavier_uniform_(m.weight)

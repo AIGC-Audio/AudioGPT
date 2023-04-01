@@ -1,6 +1,6 @@
 base_config:
-  - usr/configs/popcs_ds_beta6.yaml
-  - usr/configs/midi/cascade/opencs/opencpop_statis.yaml
+  - egs/egs_bases/svs/popcs_ds_beta6.yaml
+  - egs/egs_bases/svs/midi/cascade/opencs/opencpop_statis.yaml
 
 binarizer_cls: data_gen.singing.binarize.OpencpopBinarizer
 binary_data_dir: 'data/binary/opencpop-midi-dp'
@@ -21,7 +21,7 @@ pe_ckpt: ''
 
 fs2_ckpt: 'checkpoints/0302_opencpop_fs_midi/model_ckpt_steps_160000.ckpt'  #
 #num_valid_plots: 0
-task_cls: usr.diffsinger_task.DiffSingerMIDITask
+task_cls: tasks.svs.diffsinger_task.DiffSingerMIDITask
 
 K_step: 60
 max_tokens: 36000

@@ -1,4 +1,4 @@
-task_cls: usr.task.DiffFsTask
+task_cls: tasks.svs.task.DiffFsTask
 pitch_type: frame
 timesteps: 100
 dilation_cycle_length: 1

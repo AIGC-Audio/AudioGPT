@@ -3,7 +3,7 @@ base_config:
 
 fs2_ckpt: checkpoints/popcs_fs2_pmf0_1230/model_ckpt_steps_160000.ckpt  # to be infer
 num_valid_plots: 0
-task_cls: usr.diffsinger_task.DiffSingerOfflineTask
+task_cls: tasks.svs.diffsinger_task.DiffSingerOfflineTask
 
 # tmp:
 #pe_enable: true

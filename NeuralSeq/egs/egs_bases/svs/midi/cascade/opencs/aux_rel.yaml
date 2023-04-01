@@ -1,6 +1,6 @@
 base_config:
   - configs/singing/fs2.yaml
-  - usr/configs/midi/cascade/opencs/opencpop_statis.yaml
+  - egs/egs_bases/svs/midi/cascade/opencs/opencpop_statis.yaml
 
 audio_sample_rate: 24000
 hop_size: 128            # Hop size.
@@ -42,8 +42,8 @@ test_prefixes: [
     '2100',
 ]
 
-task_cls: usr.diffsinger_task.AuxDecoderMIDITask
-#vocoder: usr.singingvocoder.highgan.HighGAN
+task_cls: tasks.svs.diffsinger_task.AuxDecoderMIDITask
+#vocoder: tasks.svs.singingvocoder.highgan.HighGAN
 #vocoder_ckpt: checkpoints/h_2_model/checkpoint-530000steps.pkl
 vocoder: vocoders.hifigan.HifiGAN
 vocoder_ckpt: checkpoints/0109_hifigan_bigpopcs_hop128

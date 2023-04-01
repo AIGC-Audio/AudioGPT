@@ -38,7 +38,7 @@ from audio_to_text.inference_waveform import AudioCapModel
 import whisper
 from inference.svs.ds_e2e import DiffSingerE2EInfer
 from inference.tts.GenerSpeech import GenerSpeechInfer
-from inference.tts.SyntaSpeech import TTSInference
+from inference.tts.PortaSpeech import TTSInference
 from utils.hparams import set_hparams
 from utils.hparams import hparams as hp
 import scipy.io.wavfile as wavfile
@@ -282,7 +282,7 @@ class T2S:
         print("Initializing DiffSinger to %s" % device)
         self.device = device
         self.exp_name = 'checkpoints/0831_opencpop_ds1000'
-        self.config= 'NeuralSeq/usr/configs/midi/e2e/opencpop/ds1000.yaml'
+        self.config= 'NeuralSeq/egs/egs_bases/svs/midi/e2e/opencpop/ds1000.yaml'
         self.set_model_hparams()
         self.pipe = DiffSingerE2EInfer(self.hp, device)
         self.default_inp = {

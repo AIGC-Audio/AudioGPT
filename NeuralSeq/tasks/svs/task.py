@@ -1,8 +1,8 @@
 import torch
 
 import utils
-from .diff.diffusion import GaussianDiffusion
-from .diff.net import DiffNet
+from modules.diff.diffusion import GaussianDiffusion
+from modules.diff.net import DiffNet
 from tasks.tts.fs2 import FastSpeech2Task
 from utils.hparams import hparams
 

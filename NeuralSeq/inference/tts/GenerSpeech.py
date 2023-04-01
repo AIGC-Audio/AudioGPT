@@ -1,12 +1,15 @@
 import torch
+import os
+import importlib
 from inference.tts.base_tts_infer import BaseTTSInfer
 from utils.ckpt_utils import load_ckpt, get_last_checkpoint
 from modules.GenerSpeech.model.generspeech import GenerSpeech
-import os
 from data_gen.tts.emotion import inference as EmotionEncoder
 from data_gen.tts.emotion.inference import embed_utterance as Embed_utterance
 from data_gen.tts.emotion.inference import preprocess_wav
-
+from data_gen.tts.data_gen_utils import is_sil_phoneme
+from resemblyzer import VoiceEncoder
+from utils import audio
 class GenerSpeechInfer(BaseTTSInfer):
     def build_model(self):
         model = GenerSpeech(self.ph_encoder)

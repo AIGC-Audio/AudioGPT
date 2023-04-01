@@ -1,7 +1,5 @@
 import matplotlib
-
 matplotlib.use('Agg')
-
 from utils import audio
 import matplotlib.pyplot as plt
 from data_gen.tts.data_gen_utils import get_pitch

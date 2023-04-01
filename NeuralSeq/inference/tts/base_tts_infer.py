@@ -1,6 +1,3 @@
-from data_gen.tts.data_gen_utils import is_sil_phoneme
-from resemblyzer import VoiceEncoder
-from data_gen.tts.data_gen_utils import build_phone_encoder, build_word_encoder
 from tasks.tts.dataset_utils import FastSpeechWordDataset
 from tasks.tts.tts_utils import load_data_preprocessor
 from vocoders.hifigan import HifiGanGenerator

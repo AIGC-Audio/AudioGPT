@@ -26,7 +26,7 @@ test_prefixes: [
 ]
 
 task_cls: tasks.tts.fs2.FastSpeech2Task
-#vocoder: usr.singingvocoder.highgan.HighGAN
+#vocoder: tasks.svs.singingvocoder.highgan.HighGAN
 #vocoder_ckpt: checkpoints/h_2_model/checkpoint-530000steps.pkl
 vocoder: vocoders.hifigan.HifiGAN
 vocoder_ckpt: checkpoints/0109_hifigan_bigpopcs_hop128

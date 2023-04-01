@@ -3,7 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from modules.commons.common_layers import LayerNorm_, Embedding
+from modules.commons.common_layers import Embedding
+from modules.fastspeech.tts_modules import LayerNorm
 
 
 class LambdaLayer(nn.Module):
@@ -35,7 +36,7 @@ class ResidualBlock(nn.Module):
         elif norm_type == 'gn':
             norm_builder = lambda: nn.GroupNorm(8, channels)
         elif norm_type == 'ln':
-            norm_builder = lambda: LayerNorm_(channels, eps=ln_eps)
+            norm_builder = lambda: LayerNorm(channels, dim=1, eps=ln_eps)
         else:
             norm_builder = lambda: nn.Identity()
 
@@ -89,7 +90,7 @@ class ConvBlocks(nn.Module):
         elif norm_type == 'gn':
             norm = nn.GroupNorm(8, hidden_size)
         elif norm_type == 'ln':
-            norm = LayerNorm_(hidden_size, eps=ln_eps)
+            norm = LayerNorm(hidden_size, dim=1, eps=ln_eps)
         self.last_norm = norm
         self.post_net1 = nn.Conv1d(hidden_size, out_dims, kernel_size=post_net_kernel,
                                    padding=post_net_kernel // 2)

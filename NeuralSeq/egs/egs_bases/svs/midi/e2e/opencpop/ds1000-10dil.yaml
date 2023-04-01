@@ -1,6 +1,6 @@
 base_config:
-  - usr/configs/popcs_ds_beta6.yaml
-  - usr/configs/midi/cascade/opencs/opencpop_statis.yaml
+  - egs/egs_bases/svs/popcs_ds_beta6.yaml
+  - egs/egs_bases/svs/midi/cascade/opencs/opencpop_statis.yaml
 
 binarizer_cls: data_gen.singing.binarize.OpencpopBinarizer
 binary_data_dir: 'data/binary/opencpop-midi-dp'
@@ -17,11 +17,13 @@ dur_predictor_layers: 5  # *
 
 fs2_ckpt: ''  #
 #num_valid_plots: 0
-task_cls: usr.diffsinger_task.DiffSingerMIDITask
+task_cls: tasks.svs.diffsinger_task.DiffSingerMIDITask
 
-K_step: 100
+timesteps: 1000
+K_step: 1000
+max_beta: 0.02
 max_tokens: 36000
-max_updates: 160000
+max_updates: 320000
 gaussian_start: True
 
 use_pitch_embed: false
@@ -29,7 +31,7 @@ use_gt_f0: false  #  for midi exp
 
 lambda_f0: 0.
 lambda_uv: 0.
-dilation_cycle_length: 4  # *
+dilation_cycle_length: 10  # *
 rel_pos: true
 predictor_layers: 5
 pe_enable: true

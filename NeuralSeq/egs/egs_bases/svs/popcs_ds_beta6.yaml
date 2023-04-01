@@ -48,8 +48,8 @@ spec_max: [ 0.2645,  0.0583, -0.2344, -0.0184,  0.1227,  0.1533,  0.1103,  0.121
             -0.8770, -0.9520, -0.8749, -0.7297, -0.8374, -0.8667, -0.7157, -0.9035,
             -0.9219, -0.8801, -0.9298, -0.9009, -0.9604, -1.0537, -1.0781, -1.3766]
 
-task_cls: usr.diffsinger_task.DiffSingerTask
-#vocoder: usr.singingvocoder.highgan.HighGAN
+task_cls: tasks.svs.diffsinger_task.DiffSingerTask
+#vocoder: tasks.svs.singingvocoder.highgan.HighGAN
 #vocoder_ckpt: checkpoints/h_2_model/checkpoint-530000steps.pkl
 vocoder: vocoders.hifigan.HifiGAN
 vocoder_ckpt: checkpoints/0109_hifigan_bigpopcs_hop128

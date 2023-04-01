@@ -23,7 +23,7 @@ spec_max: [ -0.5982, -0.0778,  0.1205,  0.2747,  0.4657,  0.5123,  0.5684,  0.70
             0.0086, -0.0698,  0.1385,  0.0941,  0.1864,  0.1225,  0.2176,  0.2566,
             0.1670,  0.1007,  0.1444,  0.0888,  0.1998,  0.2414,  0.2932,  0.3047 ]
 
-task_cls: usr.diffspeech_task.DiffSpeechTask
+task_cls: tasks.svs.diffspeech_task.DiffSpeechTask
 vocoder: vocoders.hifigan.HifiGAN
 vocoder_ckpt: checkpoints/0414_hifi_lj_1
 num_valid_plots: 10

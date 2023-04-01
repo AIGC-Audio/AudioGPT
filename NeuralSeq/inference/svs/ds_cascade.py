@@ -2,8 +2,8 @@ import torch
 from inference.svs.base_svs_infer import BaseSVSInfer
 from utils import load_ckpt
 from utils.hparams import hparams
-from usr.diff.shallow_diffusion_tts import GaussianDiffusion
-from usr.diffsinger_task import DIFF_DECODERS
+from modulesmodules.diff.shallow_diffusion_tts import GaussianDiffusion
+from tasks.svs.diffsinger_task import DIFF_DECODERS
 
 class DiffSingerCascadeInfer(BaseSVSInfer):
     def build_model(self):
@@ -51,4 +51,4 @@ if __name__ == '__main__':
     }  # input like Opencpop dataset.
     DiffSingerCascadeInfer.example_run(inp)
 
-# # CUDA_VISIBLE_DEVICES=1 python inference/svs/ds_cascade.py --config usr/configs/midi/cascade/opencs/ds60_rel.yaml --exp_name 0303_opencpop_ds58_midi
+# # CUDA_VISIBLE_DEVICES=1 python inference/svs/ds_cascade.py --config egs/egs_bases/svs/midi/cascade/opencs/ds60_rel.yaml --exp_name 0303_opencpop_ds58_midi

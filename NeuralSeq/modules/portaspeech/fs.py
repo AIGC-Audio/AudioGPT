@@ -3,8 +3,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from modules.commons.conv import TextConvEncoder, ConvBlocks
-from modules.commons.common_layers import Embedding, LayerNorm_
-from modules.fastspeech.tts_modules import PitchPredictor, LengthRegulator
+from modules.commons.common_layers import Embedding
+from modules.fastspeech.tts_modules import LayerNorm, PitchPredictor, LengthRegulator
 from modules.commons.rel_transformer import RelTransformerEncoder, BERTRelTransformerEncoder
 from modules.commons.align_ops import clip_mel2token_to_multiple, expand_states
 from utils.pitch_utils import denorm_f0, f0_to_coarse
@@ -34,7 +34,7 @@ class DurationPredictor(torch.nn.Module):
             self.conv += [torch.nn.Sequential(
                 torch.nn.Conv1d(in_chans, n_chans, kernel_size, stride=1, padding=kernel_size // 2),
                 torch.nn.ReLU(),
-                LayerNorm_(n_chans, dim=1),
+                LayerNorm(n_chans, dim=1),
                 torch.nn.Dropout(dropout_rate)
             )]
         self.linear = nn.Sequential(torch.nn.Linear(n_chans, 1), nn.Softplus())
