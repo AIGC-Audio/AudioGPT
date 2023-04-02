@@ -1,4 +1,0 @@
-base_config:
-  - ./ps_adv.yaml
-
-use_bert: True

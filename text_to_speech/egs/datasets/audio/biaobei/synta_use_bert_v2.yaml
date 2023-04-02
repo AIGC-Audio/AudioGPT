@@ -1,5 +1,0 @@
-base_config:
-  - ./synta.yaml
-
-use_bert: True
-use_gae_in_prior: false

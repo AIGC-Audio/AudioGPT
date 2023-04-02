@@ -1,6 +1,0 @@
-base_config: egs/egs_bases/tts/vocoder/pwg.yaml
-processed_data_dir: 'data/processed/aishell3'
-binary_data_dir: 'data/binary/aishell3_wav'
-num_spk: 500
-generator_params:
-  kernel_size: 5

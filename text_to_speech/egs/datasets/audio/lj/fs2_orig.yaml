@@ -1,4 +1,0 @@
-base_config:
-  - egs/egs_bases/tts/fs2_orig.yaml
-  - ./base_text2mel.yaml
-binary_data_dir: 'data/binary/ljspeech_cwt'

@@ -2,17 +2,16 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_sing/DiffSinger'))
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'NeuralSeq'))
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_audio/Make_An_Audio'))
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_audio/Make_An_Audio_img'))
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_audio/Make_An_Audio_inpaint'))
 import gradio as gr
 import matplotlib
 import librosa
-from transformers import AutoModelForCausalLM, AutoTokenizer, CLIPSegProcessor, CLIPSegForImageSegmentation
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 from diffusers import StableDiffusionPipeline
-from diffusers import StableDiffusionInstructPix2PixPipeline, EulerAncestralDiscreteScheduler
-import os
 from langchain.agents.initialize import initialize_agent
 from langchain.agents.tools import Tool
 from langchain.chains.conversation.memory import ConversationBufferMemory
@@ -20,32 +19,23 @@ from langchain.llms.openai import OpenAI
 import re
 import uuid
 import soundfile
-from diffusers import StableDiffusionInpaintPipeline
 from PIL import Image
 import numpy as np
 from omegaconf import OmegaConf
-from transformers import pipeline, BlipProcessor, BlipForConditionalGeneration, BlipForQuestionAnswering
-import cv2
-import einops
+from transformers import pipeline, BlipProcessor, BlipForConditionalGeneration
 from einops import repeat
-from pytorch_lightning import seed_everything
-import random
 from ldm.util import instantiate_from_config
 from ldm.data.extract_mel_spectrogram import TRANSFORMS_16000
-from pathlib import Path
-from vocoder.hifigan.modules import VocoderHifigan
 from vocoder.bigvgan.models import VocoderBigVGAN
 from ldm.models.diffusion.ddim import DDIMSampler
 from wav_evaluation.models.CLAPWrapper import CLAPWrapper
-from inference.svs.ds_e2e import DiffSingerE2EInfer
 from audio_to_text.inference_waveform import AudioCapModel
 import whisper
-from text_to_speech.TTS_binding import TTSInference
 from inference.svs.ds_e2e import DiffSingerE2EInfer
 from inference.tts.GenerSpeech import GenerSpeechInfer
+from inference.tts.PortaSpeech import TTSInference
 from utils.hparams import set_hparams
 from utils.hparams import hparams as hp
-from utils.os_utils import move_file
 import scipy.io.wavfile as wavfile
 
 AUDIO_CHATGPT_PREFIX = """Audio ChatGPT
@@ -124,6 +114,7 @@ def initialize_model_inpaint(config, ckpt):
     print(model.device,device,model.cond_stage_model.device)
     sampler = DDIMSampler(model)
     return sampler
+
 def select_best_audio(prompt,wav_list):
     clap_model = CLAPWrapper('useful_ckpts/CLAP/CLAP_weights_2022.pth','useful_ckpts/CLAP/config.yml',use_cuda=torch.cuda.is_available())
     text_embeddings = clap_model.get_text_embeddings([prompt])
@@ -174,7 +165,7 @@ class T2A:
     def __init__(self, device):
         print("Initializing Make-An-Audio to %s" % device)
         self.device = device
-        self.sampler = initialize_model('configs/text-to-audio/txt2audio_args.yaml', 'useful_ckpts/ta40multi_epoch=000085.ckpt', device=device) 
+        self.sampler = initialize_model('text_to_audio/Make_An_Audio/configs/text_to_audio/txt2audio_args.yaml', 'text_to_audio/Make_An_Audio/useful_ckpts/ta40multi_epoch=000085.ckpt', device=device)
         self.vocoder = VocoderBigVGAN('text_to_audio/Make_An_Audio/vocoder/logs/bigv16k53w',device=device)
 
     def txt2audio(self, text, seed = 55, scale = 1.5, ddim_steps = 100, n_samples = 3, W = 624, H = 80):
@@ -258,7 +249,7 @@ class I2A:
         with torch.no_grad():
             result = self.img2audio(
                 image=image,
-                H=melbins, 
+                H=melbins,
                 W=mel_len
             )
         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
@@ -268,14 +259,24 @@ class I2A:
 
 class TTS:
     def __init__(self, device=None):
-        self.inferencer = TTSInference(device)
-    
+        if device is None:
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print("Initializing PortaSpeech to %s" % device)
+        self.device = device
+        self.exp_name = 'checkpoints/ps_adv_baseline'
+        self.set_model_hparams()
+        self.inferencer = TTSInference(self.hp, device)
+
+    def set_model_hparams(self):
+        set_hparams(exp_name=self.exp_name, print_hparams=False)
+        self.hp = hp
+
     def inference(self, text):
-        global temp_audio_filename
+        self.set_model_hparams()
         inp = {"text": text}
         out = self.inferencer.infer_once(inp)
         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
-        soundfile.write(audio_filename, out, samplerate = 22050)
+        soundfile.write(audio_filename, out, samplerate=22050)
         return audio_filename
 
 class T2S:
@@ -285,7 +286,7 @@ class T2S:
         print("Initializing DiffSinger to %s" % device)
         self.device = device
         self.exp_name = 'checkpoints/0831_opencpop_ds1000'
-        self.config= 'text_to_sing/DiffSinger/usr/configs/midi/e2e/opencpop/ds1000.yaml'
+        self.config= 'NeuralSeq/egs/egs_bases/svs/midi/e2e/opencpop/ds1000.yaml'
         self.set_model_hparams()
         self.pipe = DiffSingerE2EInfer(self.hp, device)
         self.default_inp = {
@@ -302,11 +303,18 @@ class T2S:
         self.set_model_hparams()
         val = inputs.split(",")
         key = ['text', 'notes', 'notes_duration']
-        if inputs == '' or len(val) < len(key):
+        try:
+            inp = {k: v for k, v in zip(key, val)}
+            wav = self.pipe.infer_once(inp)
+        except:
+            print('Error occurs. Generate default audio sample.\n')
             inp = self.default_inp
-        else:
-            inp = {k:v for k,v in zip(key,val)}
-        wav = self.pipe.infer_once(inp)
+            wav = self.pipe.infer_once(inp)
+        #if inputs == '' or len(val) < len(key):
+        #    inp = self.default_inp
+        #else:
+        #    inp = {k:v for k,v in zip(key,val)}
+        #wav = self.pipe.infer_once(inp)
         wav *= 32767
         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
         wavfile.write(audio_filename, self.hp['audio_sample_rate'], wav.astype(np.int16))
@@ -320,7 +328,7 @@ class TTS_OOD:
         print("Initializing GenerSpeech to %s" % device)
         self.device = device
         self.exp_name = 'checkpoints/GenerSpeech'
-        self.config = 'text_to_sing/DiffSinger/modules/GenerSpeech/config/generspeech.yaml'
+        self.config = 'NeuralSeq/modules/GenerSpeech/config/generspeech.yaml'
         self.set_model_hparams()
         self.pipe = GenerSpeechInfer(self.hp, device)
 
@@ -339,7 +347,6 @@ class TTS_OOD:
         key = ['ref_audio', 'text']
         val = inputs.split(",")
         inp = {k: v for k, v in zip(key, val)}
-        print(inp)
         wav = self.pipe.infer_once(inp)
         wav *= 32767
         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
@@ -347,7 +354,7 @@ class TTS_OOD:
         print(
             f"Processed GenerSpeech.run. Input text:{val[1]}. Input reference audio: {val[0]}. Output Audio_filename: {audio_filename}")
         return audio_filename
-    
+
 class Inpaint:
     def __init__(self, device):
         print("Initializing Make-An-Audio-inpaint to %s" % device)
@@ -388,7 +395,7 @@ class Inpaint:
             input_wav = np.pad(ori_wav,(0,mel_len*hop_size),constant_values=0)
         else:
             input_wav = ori_wav[:input_len]
- 
+
         mel = TRANSFORMS_16000(input_wav)
         return mel
     def gen_mel_audio(self, input_audio):
@@ -421,7 +428,7 @@ class Inpaint:
         return image_filename
     def inpaint(self, batch, seed, ddim_steps, num_samples=1, W=512, H=512):
         model = self.sampler.model
-    
+
         prng = np.random.RandomState(seed)
         start_code = prng.randn(num_samples, model.first_stage_model.embed_dim, H // 8, W // 8)
         start_code = torch.from_numpy(start_code).to(device=self.device, dtype=torch.float32)
@@ -439,8 +446,7 @@ class Inpaint:
                                             verbose=False)
         x_samples_ddim = model.decode_first_stage(samples_ddim)
 
-    
-        mask = batch["mask"]# [-1,1]
+
         mel = torch.clamp((batch["mel"]+1.0)/2.0,min=0.0, max=1.0)
         mask = torch.clamp((batch["mask"]+1.0)/2.0,min=0.0, max=1.0)
         predicted_mel = torch.clamp((x_samples_ddim+1.0)/2.0,min=0.0, max=1.0)
@@ -485,6 +491,7 @@ class ASR:
         print("Initializing Whisper to %s" % device)
         self.device = device
         self.model = whisper.load_model("base", device=device)
+
     def inference(self, audio_path):
         audio = whisper.load_audio(audio_path)
         audio = whisper.pad_or_trim(audio)
@@ -517,7 +524,7 @@ class ConversationBot:
         self.a2t = A2T(device="cuda:2")
         self.asr = ASR(device="cuda:1")
         self.inpaint = Inpaint(device="cuda:0")
-        #self.tts_ood = TTS_OOD(device="cuda:0")
+        self.tts_ood = TTS_OOD(device="cuda:0")
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
         self.tools = [
             Tool(name="Generate Image From User Input Text", func=self.t2i.inference,
@@ -529,11 +536,11 @@ class ConversationBot:
             Tool(name="Generate Audio From User Input Text", func=self.t2a.inference,
                  description="useful for when you want to generate an audio from a user input text and it saved it to a file."
                              "The input to this tool should be a string, representing the text used to generate audio."),
-            # Tool(
-            #     name="Generate human speech with style derived from a speech reference and user input text and save it to a file", func= self.tts_ood.inference,
-            #     description="useful for when you want to generate speech samples with styles (e.g., timbre, emotion, and prosody) derived from a reference custom voice."
-            #                 "Like: Generate a speech with style transferred from this voice. The text is xxx., or speak using the voice of this audio. The text is xxx."
-            #                 "The input to this tool should be a comma seperated string of two, representing reference audio path and input text."),
+            Tool(
+                name="Generate human speech with style derived from a speech reference and user input text and save it to a file", func= self.tts_ood.inference,
+                description="useful for when you want to generate speech samples with styles (e.g., timbre, emotion, and prosody) derived from a reference custom voice."
+                            "Like: Generate a speech with style transferred from this voice. The text is xxx., or speak using the voice of this audio. The text is xxx."
+                            "The input to this tool should be a comma seperated string of two, representing reference audio path and input text."),
             Tool(name="Generate singing voice From User Input Text, Note and Duration Sequence", func= self.t2s.inference,
                  description="useful for when you want to generate a piece of singing voice (Optional: from User Input Text, Note and Duration Sequence) and save it to a file."
                              "If Like: Generate a piece of singing voice, the input to this tool should be \"\" since there is no User Input Text, Note and Duration Sequence ."
@@ -548,10 +555,10 @@ class ConversationBot:
                               "The input to this tool should be a string, representing the image_path. "),
             Tool(name="Generate Text From The Audio", func=self.a2t.inference,
                  description="useful for when you want to describe an audio in text, receives audio_path as input."
-                             "The input to this tool should be a string, representing the audio_path."), 
+                             "The input to this tool should be a string, representing the audio_path."),
             Tool(name="Audio Inpainting", func=self.inpaint.show_mel_fn,
                  description="useful for when you want to inpaint a mel spectrum of an audio and predict this audio, this tool will generate a mel spectrum and you can inpaint it, receives audio_path as input, "
-                             "The input to this tool should be a string, representing the audio_path."), 
+                             "The input to this tool should be a string, representing the audio_path."),
             Tool(name="Transcribe speech", func=self.asr.inference,
                  description="useful for when you want to know the text corresponding to a human speech, receives audio_path as input."
                              "The input to this tool should be a string, representing the audio_path.")]
@@ -649,7 +656,7 @@ class ConversationBot:
         print("Inputs:", state)
         print("======>Previous memory:\n %s" % self.agent.memory)
         inpaint = Inpaint(device="cuda:0")
-        new_image_filename, new_audio_filename = inpaint.inference(audio_filename, image_filename)       
+        new_image_filename, new_audio_filename = inpaint.inference(audio_filename, image_filename)
         AI_prompt = "Here are the predict audio and the mel spectrum." + f"*{new_audio_filename}*" + f"![](/file={new_image_filename})*{new_image_filename}*"
         self.agent.memory.buffer = self.agent.memory.buffer + 'AI: ' + AI_prompt
         print("======>Current memory:\n %s" % self.agent.memory)
@@ -685,7 +692,7 @@ if __name__ == '__main__':
                 show_mel = gr.Image(type="filepath",tool='sketch',visible=False)
                 run_button = gr.Button("Predict Masked Place",visible=False)
 
-            
+
         txt.submit(bot.run_text, [txt, state], [chatbot, state, outaudio, show_mel, run_button])
         txt.submit(lambda: "", None, txt)
         btn.upload(bot.run_image_or_audio, [btn, state, txt], [chatbot, state, txt, outaudio])
