@@ -27,32 +27,34 @@ Here we list the capability of AudioGPT at this time. More supported models and 
 |       Text-to-Sing        |         [DiffSinger](), [VISinger]()          |  Yes (WIP)   |
 
 ### Audio
-|           Task            |   Supported Foundation Models   | Status |
-|:-------------------------:|:-------------------------------:|:------:|
-|       Text-to-Audio       |        [Make-An-Audio]()        |  Yes   |
-|     Audio Inpainting      |        [Make-An-Audio]()        |  WIP   |
-|      Image-to-Audio       |        [Make-An-Audio]()        |  Yes   |
-|     sound detection       |        [Audio-transformer]()    |  Yes   |
+|       Task       | Supported Foundation Models |  Status   |
+|:----------------:|:---------------------------:|:---------:|
+|  Text-to-Audio   |      [Make-An-Audio]()      |    Yes    |
+| Audio Inpainting |      [Make-An-Audio]()      |    Yes    |
+|  Image-to-Audio  |      [Make-An-Audio]()      |    Yes    |
+| Sound Detection  |    [Audio-transformer]()    | Yes (WIP) |
 
 
 ### Talking Head
 
-|           Task            |   Supported Foundation Models   | Status |
-|:-------------------------:|:-------------------------------:|:------:|
-|  Talking Head Synthesis   |          [GeneFace]()           |  WIP   |
+|           Task            |   Supported Foundation Models   |   Status   |
+|:-------------------------:|:-------------------------------:|:----------:|
+|  Talking Head Synthesis   |          [GeneFace]()           | Yes (WIP)  |
 
 ## Internal Version Updates
+4.3 Support Talking Head Synthesis\
+4.1 Support Audio inpainting and clean codes\
 3.27 Support Style Transfer/Talking head Synthesis\
 3.23 Support Text-to-Sing\
-3.21 Support Image-to-Sing\
+3.21 Support Image-to-Audio\
 3.19 Support Speech Recognition\
 3.17 Support Text-to-Audio
 
 ## Todo
-- [ ] clean text to sing/speech code
+- [x] clean text to sing/speech code
 - [ ] import Espnet models for speech tasks
 - [ ] merge talking head synthesis into main
-- [ ] change audio/video log output
+- [x] change audio/video log output
 - [ ] support huggingface space
 
 ## Acknowledgement
