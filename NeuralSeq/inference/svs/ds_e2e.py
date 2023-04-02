@@ -4,7 +4,7 @@ import torch
 from inference.svs.base_svs_infer import BaseSVSInfer
 from utils import load_ckpt
 from utils.hparams import hparams
-from modulesmodules.diff.shallow_diffusion_tts import GaussianDiffusion
+from modules.diff.shallow_diffusion_tts import GaussianDiffusion
 from tasks.svs.diffsinger_task import DIFF_DECODERS
 from modules.fastspeech.pe import PitchExtractor
 import utils

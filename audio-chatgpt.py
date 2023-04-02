@@ -5,6 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'NeuralSeq'))
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_audio/Make_An_Audio'))
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_audio/Make_An_Audio_img'))
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_audio/Make_An_Audio_inpaint'))
 import gradio as gr
 import matplotlib
 import librosa
@@ -164,7 +165,7 @@ class T2A:
     def __init__(self, device):
         print("Initializing Make-An-Audio to %s" % device)
         self.device = device
-        self.sampler = initialize_model('configs/text-to-audio/txt2audio_args.yaml', 'useful_ckpts/ta40multi_epoch=000085.ckpt', device=device) 
+        self.sampler = initialize_model('text_to_audio/Make_An_Audio/configs/text_to_audio/txt2audio_args.yaml', 'text_to_audio/Make_An_Audio/useful_ckpts/ta40multi_epoch=000085.ckpt', device=device)
         self.vocoder = VocoderBigVGAN('text_to_audio/Make_An_Audio/vocoder/logs/bigv16k53w',device=device)
 
     def txt2audio(self, text, seed = 55, scale = 1.5, ddim_steps = 100, n_samples = 3, W = 624, H = 80):
@@ -302,11 +303,18 @@ class T2S:
         self.set_model_hparams()
         val = inputs.split(",")
         key = ['text', 'notes', 'notes_duration']
-        if inputs == '' or len(val) < len(key):
+        try:
+            inp = {k: v for k, v in zip(key, val)}
+            wav = self.pipe.infer_once(inp)
+        except:
+            print('Error occurs. Generate default audio sample.\n')
             inp = self.default_inp
-        else:
-            inp = {k:v for k,v in zip(key,val)}
-        wav = self.pipe.infer_once(inp)
+            wav = self.pipe.infer_once(inp)
+        #if inputs == '' or len(val) < len(key):
+        #    inp = self.default_inp
+        #else:
+        #    inp = {k:v for k,v in zip(key,val)}
+        #wav = self.pipe.infer_once(inp)
         wav *= 32767
         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
         wavfile.write(audio_filename, self.hp['audio_sample_rate'], wav.astype(np.int16))
