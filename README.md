@@ -33,6 +33,8 @@ Here we list the capability of AudioGPT at this time. More supported models and 
 | Audio Inpainting |      [Make-An-Audio]()      |    Yes    |
 |  Image-to-Audio  |      [Make-An-Audio]()      |    Yes    |
 | Sound Detection  |    [Audio-transformer]()    | Yes (WIP) |
+| Target sound detection  |    [TSDNet]()    | Yes (WIP) |
+| Sound Extraction  |    [LASSNet]()    | Yes (WIP) |
 
 
 ### Talking Head
