@@ -27,3 +27,15 @@ wget -P data/binary/training_set https://huggingface.co/spaces/Rongjiehuang/Gene
 wget -P data/binary/training_set https://huggingface.co/spaces/Rongjiehuang/GenerSpeech/resolve/main/data/binary/training_set/train_f0s_mean_std.npy
 wget -P data/binary/training_set https://huggingface.co/spaces/Rongjiehuang/GenerSpeech/resolve/main/data/binary/training_set/word_set.json
 
+cd audio_detection/audio_infer/useful_ckpts
+wget https://huggingface.co/Dongchao/pre_trained_model/resolve/main/audio_detection.pth
+cd mono2binaural/useful_ckpts
+wget https://huggingface.co/Dongchao/pre_trained_model/resolve/main/m2b.tar.gz
+tar -zxvf m2b.tar.gz ./
+rm m2b.tar.gz
+cd audio_detection/target_sound_detection/useful_ckpts
+wget https://huggingface.co/Dongchao/pre_trained_model/resolve/main/tsd.tar.gz
+tar -zxvf tsd.tar.gz ./
+rm tsd.tar.gz
+cd sound_extraction/useful_ckpts
+wget https://huggingface.co/Dongchao/pre_trained_model/resolve/main/LASSNet.pt
