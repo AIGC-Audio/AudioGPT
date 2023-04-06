@@ -6,6 +6,8 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Neura
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_audio/Make_An_Audio'))
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_audio/Make_An_Audio_img'))
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_audio/Make_An_Audio_inpaint'))
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'audio_detection'))
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'mono2binaural'))
 import gradio as gr
 import matplotlib
 import librosa
@@ -37,7 +39,18 @@ from inference.tts.PortaSpeech import TTSInference
 from utils.hparams import set_hparams
 from utils.hparams import hparams as hp
 import scipy.io.wavfile as wavfile
-
+import librosa
+from audio_infer.utils import config as detection_config
+from audio_infer.pytorch.models import PVT
+from src.models import BinauralNetwork
+from sound_extraction.model.LASSNet import LASSNet
+from sound_extraction.utils.stft import STFT
+from sound_extraction.utils.wav_io import load_wav, save_wav
+from target_sound_detection.src import models as tsd_models
+from target_sound_detection.src.models import event_labels
+from target_sound_detection.src.utils import median_filter, decode_with_timestamps
+import clip
+import numpy as np
 AUDIO_CHATGPT_PREFIX = """Audio ChatGPT
 AUdio ChatGPT can not directly read audios, but it has a list of tools to finish different audio synthesis tasks. Each audio will have a file name formed as "audio/xxx.wav". When talking about audios, Audio ChatGPT is very strict to the file name and will never fabricate nonexistent files. 
 AUdio ChatGPT is able to use tools in a sequence, and is loyal to the tool observation outputs rather than faking the audio content and audio file name. It will remember to provide the file name from the last tool observation, if a new audio is generated.
@@ -511,6 +524,261 @@ class A2T:
         caption_text = self.model(audio)
         return caption_text[0]
 
+class SoundDetection:
+    def __init__(self, device):
+        self.device = device
+        self.sample_rate = 32000
+        self.window_size = 1024
+        self.hop_size = 320
+        self.mel_bins = 64
+        self.fmin = 50
+        self.fmax = 14000
+        self.model_type = 'PVT'
+        self.checkpoint_path = 'audio_detection/audio_infer/useful_ckpts/audio_detection.pth'
+        self.classes_num = detection_config.classes_num
+        self.labels = detection_config.labels
+        self.frames_per_second = self.sample_rate // self.hop_size
+        # Model = eval(self.model_type)
+        self.model = PVT(sample_rate=self.sample_rate, window_size=self.window_size, 
+            hop_size=self.hop_size, mel_bins=self.mel_bins, fmin=self.fmin, fmax=self.fmax, 
+            classes_num=self.classes_num)
+        checkpoint = torch.load(self.checkpoint_path, map_location=self.device)
+        self.model.load_state_dict(checkpoint['model'])
+        self.model.to(device)
+
+    def inference(self, audio_path):
+        # Forward
+        (waveform, _) = librosa.core.load(audio_path, sr=self.sample_rate, mono=True)
+        waveform = waveform[None, :]    # (1, audio_length)
+        waveform = torch.from_numpy(waveform)
+        waveform = waveform.to(self.device)
+        # Forward
+        with torch.no_grad():
+            self.model.eval()
+            batch_output_dict = self.model(waveform, None)
+        framewise_output = batch_output_dict['framewise_output'].data.cpu().numpy()[0]
+        """(time_steps, classes_num)"""
+        # print('Sound event detection result (time_steps x classes_num): {}'.format(
+        #     framewise_output.shape))
+        import numpy as np
+        import matplotlib.pyplot as plt
+        sorted_indexes = np.argsort(np.max(framewise_output, axis=0))[::-1]
+        top_k = 10  # Show top results
+        top_result_mat = framewise_output[:, sorted_indexes[0 : top_k]]    
+        """(time_steps, top_k)"""
+        # Plot result    
+        stft = librosa.core.stft(y=waveform[0].data.cpu().numpy(), n_fft=self.window_size, 
+            hop_length=self.hop_size, window='hann', center=True)
+        frames_num = stft.shape[-1]
+        fig, axs = plt.subplots(2, 1, sharex=True, figsize=(10, 4))
+        axs[0].matshow(np.log(np.abs(stft)), origin='lower', aspect='auto', cmap='jet')
+        axs[0].set_ylabel('Frequency bins')
+        axs[0].set_title('Log spectrogram')
+        axs[1].matshow(top_result_mat.T, origin='upper', aspect='auto', cmap='jet', vmin=0, vmax=1)
+        axs[1].xaxis.set_ticks(np.arange(0, frames_num, self.frames_per_second))
+        axs[1].xaxis.set_ticklabels(np.arange(0, frames_num / self.frames_per_second))
+        axs[1].yaxis.set_ticks(np.arange(0, top_k))
+        axs[1].yaxis.set_ticklabels(np.array(self.labels)[sorted_indexes[0 : top_k]])
+        axs[1].yaxis.grid(color='k', linestyle='solid', linewidth=0.3, alpha=0.3)
+        axs[1].set_xlabel('Seconds')
+        axs[1].xaxis.set_ticks_position('bottom')
+        plt.tight_layout()
+        image_filename = os.path.join('image', str(uuid.uuid4())[0:8] + ".png")
+        plt.savefig(image_filename)
+        return image_filename
+
+class SoundExtraction:
+    def __init__(self, device):
+        self.device = device
+        self.model_file = 'sound_extraction/useful_ckpts/LASSNet.pt'
+        self.stft = STFT()
+        import torch.nn as nn
+        self.model = nn.DataParallel(LASSNet(device)).to(device)
+        checkpoint = torch.load(self.model_file)
+        self.model.load_state_dict(checkpoint['model'])
+        self.model.eval()
+
+    def inference(self, inputs):
+        #key = ['ref_audio', 'text']
+        val = inputs.split(",")
+        audio_path = val[0] # audio_path, text
+        text = val[1]
+        waveform = load_wav(audio_path)
+        waveform = torch.tensor(waveform).transpose(1,0)
+        mixed_mag, mixed_phase = self.stft.transform(waveform)
+        text_query = ['[CLS] ' + text]
+        mixed_mag = mixed_mag.transpose(2,1).unsqueeze(0).to(self.device)
+        est_mask = self.model(mixed_mag, text_query)
+        est_mag = est_mask * mixed_mag  
+        est_mag = est_mag.squeeze(1)  
+        est_mag = est_mag.permute(0, 2, 1) 
+        est_wav = self.stft.inverse(est_mag.cpu().detach(), mixed_phase)
+        est_wav = est_wav.squeeze(0).squeeze(0).numpy()  
+        #est_path = f'output/est{i}.wav'
+        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        print('audio_filename ', audio_filename)
+        save_wav(est_wav, audio_filename)
+        return audio_filename
+
+
+class Binaural:
+    def __init__(self, device):
+        self.device = device
+        self.model_file = 'mono2binaural/useful_ckpts/m2b/binaural_network.net'
+        self.position_file = ['mono2binaural/useful_ckpts/m2b/tx_positions.txt',
+                              'mono2binaural/useful_ckpts/m2b/tx_positions2.txt',
+                              'mono2binaural/useful_ckpts/m2b/tx_positions3.txt',
+                              'mono2binaural/useful_ckpts/m2b/tx_positions4.txt',
+                              'mono2binaural/useful_ckpts/m2b/tx_positions5.txt']
+        self.net = BinauralNetwork(view_dim=7,
+                      warpnet_layers=4,
+                      warpnet_channels=64,
+                      )
+        self.net.load_from_file(self.model_file)
+        self.sr = 48000
+    def inference(self, audio_path):
+        mono, sr  = librosa.load(path=audio_path, sr=self.sr, mono=True)
+        mono = torch.from_numpy(mono)
+        mono = mono.unsqueeze(0)
+        import numpy as np
+        import random
+        rand_int = random.randint(0,4)
+        view = np.loadtxt(self.position_file[rand_int]).transpose().astype(np.float32)
+        view = torch.from_numpy(view)
+        if not view.shape[-1] * 400 == mono.shape[-1]:
+            mono = mono[:,:(mono.shape[-1]//400)*400] # 
+            if view.shape[1]*400 > mono.shape[1]:
+                m_a = view.shape[1] - mono.shape[-1]//400 
+                rand_st = random.randint(0,m_a)
+                view = view[:,m_a:m_a+(mono.shape[-1]//400)] # 
+        # binauralize and save output
+        self.net.eval().to(self.device)
+        mono, view = mono.to(self.device), view.to(self.device)
+        chunk_size = 48000  # forward in chunks of 1s
+        rec_field =  1000  # add 1000 samples as "safe bet" since warping has undefined rec. field
+        rec_field -= rec_field % 400  # make sure rec_field is a multiple of 400 to match audio and view frequencies
+        chunks = [
+            {
+                "mono": mono[:, max(0, i-rec_field):i+chunk_size],
+                "view": view[:, max(0, i-rec_field)//400:(i+chunk_size)//400]
+            }
+            for i in range(0, mono.shape[-1], chunk_size)
+        ]
+        for i, chunk in enumerate(chunks):
+            with torch.no_grad():
+                mono = chunk["mono"].unsqueeze(0)
+                view = chunk["view"].unsqueeze(0)
+                binaural = self.net(mono, view).squeeze(0)
+                if i > 0:
+                    binaural = binaural[:, -(mono.shape[-1]-rec_field):]
+                chunk["binaural"] = binaural
+        binaural = torch.cat([chunk["binaural"] for chunk in chunks], dim=-1)
+        binaural = torch.clamp(binaural, min=-1, max=1).cpu()
+        #binaural = chunked_forwarding(net, mono, view)
+        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        import torchaudio
+        torchaudio.save(audio_filename, binaural, sr)
+        #soundfile.write(audio_filename, binaural, samplerate = 48000)
+        print(f"Processed Binaural.run, audio_filename: {audio_filename}")
+        return audio_filename
+
+class TargetSoundDetection:
+    def __init__(self, device):
+        self.device = device
+        self.MEL_ARGS = {
+            'n_mels': 64,
+            'n_fft': 2048,
+            'hop_length': int(22050 * 20 / 1000),
+            'win_length': int(22050 * 40 / 1000)
+        }
+        self.EPS = np.spacing(1)
+        self.clip_model, _ = clip.load("ViT-B/32", device=self.device)
+        self.event_labels = event_labels
+        self.id_to_event =  {i : label for i, label in enumerate(self.event_labels)}
+        config = torch.load('audio_detection/target_sound_detection/useful_ckpts/tsd/run_config.pth', map_location='cpu')
+        config_parameters = dict(config)
+        config_parameters['tao'] = 0.6
+        if 'thres' not in config_parameters.keys():
+            config_parameters['thres'] = 0.5
+        if 'time_resolution' not in config_parameters.keys():
+            config_parameters['time_resolution'] = 125
+        model_parameters = torch.load('audio_detection/target_sound_detection/useful_ckpts/tsd/run_model_7_loss=-0.0724.pt'
+                                        , map_location=lambda storage, loc: storage) # load parameter 
+        self.model = getattr(tsd_models, config_parameters['model'])(config_parameters,
+                    inputdim=64, outputdim=2, time_resolution=config_parameters['time_resolution'], **config_parameters['model_args'])
+        self.model.load_state_dict(model_parameters)
+        self.model = self.model.to(self.device).eval()
+        self.re_embeds = torch.load('audio_detection/target_sound_detection/useful_ckpts/tsd/text_emb.pth')
+        self.ref_mel = torch.load('audio_detection/target_sound_detection/useful_ckpts/tsd/ref_mel.pth')
+
+    def extract_feature(self, fname):
+        import soundfile as sf
+        y, sr = sf.read(fname, dtype='float32')
+        print('y ', y.shape)
+        ti = y.shape[0]/sr
+        if y.ndim > 1:
+            y = y.mean(1)
+        y = librosa.resample(y, sr, 22050)
+        lms_feature = np.log(librosa.feature.melspectrogram(y, **self.MEL_ARGS) + self.EPS).T
+        return lms_feature,ti
+    
+    def build_clip(self, text):
+        text = clip.tokenize(text).to(self.device) # ["a diagram with dog", "a dog", "a cat"]
+        text_features = self.clip_model.encode_text(text)
+        return text_features
+    
+    def cal_similarity(self, target, retrievals):
+        ans = []
+        #target =torch.from_numpy(target)
+        for name in retrievals.keys():
+            tmp = retrievals[name]
+            #tmp = torch.from_numpy(tmp)
+            s = torch.cosine_similarity(target.squeeze(), tmp.squeeze(), dim=0)
+            ans.append(s.item())
+        return ans.index(max(ans))
+    
+    def inference(self, text, audio_path):
+        target_emb = self.build_clip(text) # torch type
+        idx = self.cal_similarity(target_emb, self.re_embeds)
+        target_event = self.id_to_event[idx]
+        embedding = self.ref_mel[target_event]
+        embedding = torch.from_numpy(embedding)
+        embedding = embedding.unsqueeze(0).to(self.device).float()
+        #print('embedding ', embedding.shape)
+        inputs,ti = self.extract_feature(audio_path)
+        #print('ti ', ti)
+        inputs = torch.from_numpy(inputs)
+        inputs = inputs.unsqueeze(0).to(self.device).float()
+        #print('inputs ', inputs.shape)
+        decision, decision_up, logit = self.model(inputs, embedding)
+        pred = decision_up.detach().cpu().numpy()
+        pred = pred[:,:,0]
+        frame_num = decision_up.shape[1]
+        time_ratio = ti / frame_num
+        filtered_pred = median_filter(pred, window_size=1, threshold=0.5)
+        #print('filtered_pred ', filtered_pred)
+        time_predictions = []
+        for index_k in range(filtered_pred.shape[0]):
+            decoded_pred = []
+            decoded_pred_ = decode_with_timestamps(target_event, filtered_pred[index_k,:])
+            if len(decoded_pred_) == 0: # neg deal
+                decoded_pred_.append((target_event, 0, 0))
+            decoded_pred.append(decoded_pred_)
+            for num_batch in range(len(decoded_pred)): # when we test our model,the batch_size is 1
+                cur_pred = pred[num_batch]
+                # Save each frame output, for later visualization
+                label_prediction = decoded_pred[num_batch] # frame predict
+                # print(label_prediction)
+                for event_label, onset, offset in label_prediction:
+                    time_predictions.append({
+                        'onset': onset*time_ratio,
+                        'offset': offset*time_ratio,})
+        ans = ''
+        for i,item in enumerate(time_predictions):
+            ans = ans + 'segment' + str(i+1) + ' start_time: ' + str(item['onset']) + '  end_time: ' + str(item['offset']) + '\t'
+        #print(ans)
+        return ans
+
 class ConversationBot:
     def __init__(self):
         print("Initializing AudioChatGPT")
@@ -525,6 +793,10 @@ class ConversationBot:
         self.asr = ASR(device="cuda:1")
         self.inpaint = Inpaint(device="cuda:0")
         self.tts_ood = TTS_OOD(device="cuda:0")
+        self.detection = SoundDetection(device="cuda:0")
+        self.binaural = Binaural(device="cuda:1")
+        self.extraction = SoundExtraction(device="cuda:0")
+        self.TSD = TargetSoundDetection(device="cuda:1")
         self.memory = ConversationBufferMemory(memory_key="chat_history", output_key='output')
         self.tools = [
             Tool(name="Generate Image From User Input Text", func=self.t2i.inference,
@@ -561,7 +833,19 @@ class ConversationBot:
                              "The input to this tool should be a string, representing the audio_path."),
             Tool(name="Transcribe speech", func=self.asr.inference,
                  description="useful for when you want to know the text corresponding to a human speech, receives audio_path as input."
-                             "The input to this tool should be a string, representing the audio_path.")]
+                             "The input to this tool should be a string, representing the audio_path."),
+            Tool(name="Detect the sound event from the audio", func=self.detection.inference,
+                 description="useful for when you want to know what event in the audio and the sound event start or end time, receives audio_path as input. "
+                             "The input to this tool should be a string, representing the audio_path. "),
+            Tool(name="Sythesize binaural audio from a mono audio input", func=self.binaural.inference,
+                 description="useful for when you want to transfer your mono audio into binaural audio, receives audio_path as input. "
+                             "The input to this tool should be a string, representing the audio_path. "),
+            Tool(name="Extract sound event from mixture audio based on language description", func=self.extraction.inference,
+                 description="useful for when you extract target sound from a mixture audio, you can describe the taregt sound by text, receives audio_path and text as input. "
+                             "The input to this tool should be a comma seperated string of two, representing mixture audio path and input text."),
+            Tool(name="Detect the sound event from the audio based on your descriptions", func=self.TSD.inference,
+                 description="useful for when you want to know the when happens the target sound event in th audio. You can use language descriptions to instruct the model. receives text description and audio_path as input. "
+                             "The input to this tool should be a string, representing the answer. ")]
         self.agent = initialize_agent(
             self.tools,
             self.llm,
