@@ -32,3 +32,16 @@ wget -P text_to_speech/checkpoints/ljspeech/ps_adv_baseline -i https://huggingfa
 wget -P audio_to_text/audiocaps_cntrstv_cnn14rnn_trm -i https://huggingface.co/AIGC-Audio/AudioGPT/blob/main/audio_to_text/audiocaps_cntrstv_cnn14rnn_trm/config.yaml https://huggingface.co/AIGC-Audio/AudioGPT/resolve/main/audio_to_text/audiocaps_cntrstv_cnn14rnn_trm/swa.pth
 wget -P audio_to_text/clotho_cntrstv_cnn14rnn_trm -i https://huggingface.co/AIGC-Audio/AudioGPT/blob/main/audio_to_text/clotho_cntrstv_cnn14rnn_trm/config.yaml https://huggingface.co/AIGC-Audio/AudioGPT/resolve/main/audio_to_text/clotho_cntrstv_cnn14rnn_trm/swa.pth
 wget -P audio_to_text/pretrained_feature_extractors https://huggingface.co/AIGC-Audio/AudioGPT/resolve/main/audio_to_text/pretrained_feature_extractors/contrastive_pretrain_cnn14_bertm.pth
+# audio detection
+cd audio_detection/audio_infer/useful_ckpts
+wget https://huggingface.co/Dongchao/pre_trained_model/resolve/main/audio_detection.pth
+cd mono2binaural/useful_ckpts
+wget https://huggingface.co/Dongchao/pre_trained_model/resolve/main/m2b.tar.gz
+tar -zxvf m2b.tar.gz ./
+rm m2b.tar.gz
+cd audio_detection/target_sound_detection/useful_ckpts
+wget https://huggingface.co/Dongchao/pre_trained_model/resolve/main/tsd.tar.gz
+tar -zxvf tsd.tar.gz ./
+rm tsd.tar.gz
+cd sound_extraction/useful_ckpts
+wget https://huggingface.co/Dongchao/pre_trained_model/resolve/main/LASSNet.pt
