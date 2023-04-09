@@ -843,7 +843,7 @@ class ConversationBot:
             Tool(name="Extract sound event from mixture audio based on language description", func=self.extraction.inference,
                  description="useful for when you extract target sound from a mixture audio, you can describe the taregt sound by text, receives audio_path and text as input. "
                              "The input to this tool should be a comma seperated string of two, representing mixture audio path and input text."),
-            Tool(name="Detect the sound event from the audio based on your descriptions", func=self.TSD.inference,
+            Tool(name="Detect the target sound event from the audio based on your descriptions", func=self.TSD.inference,
                  description="useful for when you want to know the when happens the target sound event in th audio. You can use language descriptions to instruct the model. receives text description and audio_path as input. "
                              "The input to this tool should be a string, representing the answer. ")]
         self.agent = initialize_agent(
