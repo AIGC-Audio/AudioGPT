@@ -71,3 +71,32 @@ Output:<br />
 Input Example : Generate an image of a horse<br />
 Output:<br />
 ![](t2i.png)<br />
+
+## Sound Detection
+First upload your audio(.wav)<br />
+Audio Example :<br />
+<audio src="mix.wav" controls></audio><br />
+Input Example : What events does this audio include?<br />
+Output:<br />
+![](detection.png)<br />
+
+## Mono audio to Binaural Audio
+First upload your audio(.wav)<br />
+<audio src="mix.wav" controls></audio><br />
+Input Example: Transfer the mono speech to a binaural one audio.<br />
+Output:<br />
+![](m2b.png)<br />
+
+## Target Sound Detection
+Fisrt upload your audio(.wav)<br />
+<audio src="mix.wav" controls></audio><br />
+Input Example: please help me detect the target sound in the audio based on desription: “I want to detect Applause event”<br />
+Output:<br />
+![](tsd.png)<br />
+
+## Sound Extraction
+First upload your audio(.wav)<br />
+<audio src="mix.wav" controls></audio><br />
+Input Example: Please help me extract the sound events from the audio based on the description: "a person shouts nearby and then emergency vehicle sirens sounds"<br />
+Output:<br />
+![](sound_extraction.png)<br />
