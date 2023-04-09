@@ -2,23 +2,26 @@
 
 **AudioGPT** connects ChatGPT and a series of Audio Foundation Models to enable **sending** and **receiving** speech, sing, audio, and talking head during chatting.
 
+<a src="https://img.shields.io/badge/%F0%9F%A4%97-Open%20in%20Spaces-blue" href="https://huggingface.co/spaces/AIGC-Audio/AudioGPT">
+    <img src="https://img.shields.io/badge/%F0%9F%A4%97-Open%20in%20Spaces-blue" alt="Open in Spaces">
+</a>
 
 ## Capabilities
 
-Up-to-date link: https://93868c7fa583f4b5.gradio.app
+Up-to-date link: https://cdb7b543afd1c8e8.gradio.app
 
 Here we list the capability of AudioGPT at this time. More supported models and tasks are comming soon. For prompt examples, refer to [asset](assets/README.md).
 
 ### Speech
-|           Task            |   Supported Foundation Models   | Status |
-|:-------------------------:|:-------------------------------:|:------:|
-|      Text-to-Speech       | [FastSpeech](), [SyntaSpeech](), [VITS]() |  Yes (WIP)   |
-|      Style Transfer       |         [GenerSpeech]()         |  Yes   |
-|    Speech Recognition     |           [whisper](), [Conformer]()           |  Yes   |
-|    Speech Enhancement     |          [ConvTasNet]()         |  WIP   |
-|    Speech Separation      |          [TF-GridNet]()         |  WIP   |
-|    Speech Translation     |          [Multi-decoder]()      |  WIP   |
-|  Mono-to-Binaural Speech  |          [NeuralWarp]()         |  Yes   |
+|            Task            |   Supported Foundation Models   | Status |
+|:--------------------------:|:-------------------------------:|:------:|
+|       Text-to-Speech       | [FastSpeech](), [SyntaSpeech](), [VITS]() |  Yes (WIP)   |
+|       Style Transfer       |         [GenerSpeech]()         |  Yes   |
+|     Speech Recognition     |           [whisper](), [Conformer]()           |  Yes   |
+|     Speech Enhancement     |          [ConvTasNet]()         |  WIP   |
+|     Speech Separation      |          [TF-GridNet]()         |  WIP   |
+|     Speech Translation     |          [Multi-decoder]()      |  WIP   |
+|      Mono-to-Binaural      |          [NeuralWarp]()         |  Yes   |
 
 ### Sing
 
@@ -27,14 +30,14 @@ Here we list the capability of AudioGPT at this time. More supported models and 
 |       Text-to-Sing        |         [DiffSinger](), [VISinger]()          |  Yes (WIP)   |
 
 ### Audio
-|       Task       | Supported Foundation Models |  Status   |
-|:----------------:|:---------------------------:|:---------:|
-|  Text-to-Audio   |      [Make-An-Audio]()      |    Yes    |
-| Audio Inpainting |      [Make-An-Audio]()      |    Yes    |
-|  Image-to-Audio  |      [Make-An-Audio]()      |    Yes    |
-| Sound Detection  |    [Audio-transformer]()    | Yes (WIP) |
-| Target sound detection  |    [TSDNet]()    | Yes (WIP) |
-| Sound Extraction  |    [LASSNet]()    | Yes (WIP) |
+|          Task          | Supported Foundation Models | Status |
+|:----------------------:|:---------------------------:|:------:|
+|     Text-to-Audio      |      [Make-An-Audio]()      |  Yes   |
+|    Audio Inpainting    |      [Make-An-Audio]()      |  Yes   |
+|     Image-to-Audio     |      [Make-An-Audio]()      |  Yes   |
+|    Sound Detection     |    [Audio-transformer]()    | Yes    |
+| Target Sound Detection |    [TSDNet]()    |  Yes   |
+|    Sound Extraction    |    [LASSNet]()    |  Yes   |
 
 
 ### Talking Head
@@ -44,7 +47,8 @@ Here we list the capability of AudioGPT at this time. More supported models and 
 |  Talking Head Synthesis   |          [GeneFace]()           | Yes (WIP)  |
 
 ## Internal Version Updates
-4.3 Support Talking Head Synthesis\
+4.6 Support Sound Extraction/Detection\
+4.3 Support huggingface demo space\
 4.1 Support Audio inpainting and clean codes\
 3.27 Support Style Transfer/Talking head Synthesis\
 3.23 Support Text-to-Sing\
@@ -54,10 +58,9 @@ Here we list the capability of AudioGPT at this time. More supported models and 
 
 ## Todo
 - [x] clean text to sing/speech code
-- [ ] import Espnet models for speech tasks
 - [ ] merge talking head synthesis into main
 - [x] change audio/video log output
-- [ ] support huggingface space
+- [x] support huggingface space
 
 ## Acknowledgement
 We appreciate the open source of the following projects:

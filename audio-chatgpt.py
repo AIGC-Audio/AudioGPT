@@ -51,16 +51,16 @@ from target_sound_detection.src.models import event_labels
 from target_sound_detection.src.utils import median_filter, decode_with_timestamps
 import clip
 import numpy as np
-AUDIO_CHATGPT_PREFIX = """Audio ChatGPT
-AUdio ChatGPT can not directly read audios, but it has a list of tools to finish different audio synthesis tasks. Each audio will have a file name formed as "audio/xxx.wav". When talking about audios, Audio ChatGPT is very strict to the file name and will never fabricate nonexistent files. 
-AUdio ChatGPT is able to use tools in a sequence, and is loyal to the tool observation outputs rather than faking the audio content and audio file name. It will remember to provide the file name from the last tool observation, if a new audio is generated.
-Human may provide Audio ChatGPT with a description. Audio ChatGPT should generate audios according to this description rather than directly imagine from memory or yourself."
-
+AUDIO_CHATGPT_PREFIX = """AudioGPT
+AudioGPT can not directly read audios, but it has a list of tools to finish different speech, audio, and singing voice tasks. Each audio will have a file name formed as "audio/xxx.wav". When talking about audios, AudioGPT is very strict to the file name and will never fabricate nonexistent files. 
+AudioGPT is able to use tools in a sequence, and is loyal to the tool observation outputs rather than faking the audio content and audio file name. It will remember to provide the file name from the last tool observation, if a new audio is generated.
+Human may provide new audios to AudioGPT with a description. The description helps AudioGPT to understand this audio, but AudioGPT should use tools to finish following tasks, rather than directly imagine from the description.
+Overall, AudioGPT is a powerful audio dialogue assistant tool that can help with a wide range of tasks and provide valuable insights and information on a wide range of topics. 
 
 TOOLS:
 ------
 
-Audio ChatGPT  has access to the following tools:"""
+AudioGPT has access to the following tools:"""
 
 AUDIO_CHATGPT_FORMAT_INSTRUCTIONS = """To use a tool, please use the following format:
 
@@ -238,7 +238,7 @@ class I2A:
         image = Image.open(image)
         image = self.sampler.model.cond_stage_model.preprocess(image).unsqueeze(0)
         image_embedding = self.sampler.model.cond_stage_model.forward_img(image)
-        c = image_embedding.repeat(n_samples, 1, 1)# shape:[1,77,1280],即还没有变成句子embedding，仍是每个单词的embedding
+        c = image_embedding.repeat(n_samples, 1, 1)
         shape = [self.sampler.model.first_stage_model.embed_dim, H//8, W//8]  # (z_dim, 80//2^x, 848//2^x)
         samples_ddim, _ = self.sampler.sample(S=ddim_steps,
                                             conditioning=c,
@@ -396,9 +396,9 @@ class Inpaint:
         sr, ori_wav = wavfile.read(input_audio_path)
         print("gen_mel")
         print(sr,ori_wav.shape,ori_wav)
-        ori_wav = ori_wav.astype(np.float32, order='C') / 32768.0 # order='C'是以C语言格式存储，不用管
+        ori_wav = ori_wav.astype(np.float32, order='C') / 32768.0
         if len(ori_wav.shape)==2:# stereo
-            ori_wav = librosa.to_mono(ori_wav.T)# gradio load wav shape could be (wav_len,2) but librosa expects (2,wav_len)
+            ori_wav = librosa.to_mono(ori_wav.T)
         print(sr,ori_wav.shape,ori_wav)
         ori_wav = librosa.resample(ori_wav,orig_sr = sr,target_sr = SAMPLE_RATE)
 
@@ -417,9 +417,9 @@ class Inpaint:
         print("gen_mel_audio")
         print(sr,ori_wav.shape,ori_wav)
 
-        ori_wav = ori_wav.astype(np.float32, order='C') / 32768.0 # order='C'是以C语言格式存储，不用管
+        ori_wav = ori_wav.astype(np.float32, order='C') / 32768.0
         if len(ori_wav.shape)==2:# stereo
-            ori_wav = librosa.to_mono(ori_wav.T)# gradio load wav shape could be (wav_len,2) but librosa expects (2,wav_len)
+            ori_wav = librosa.to_mono(ori_wav.T)
         print(sr,ori_wav.shape,ori_wav)
         ori_wav = librosa.resample(ori_wav,orig_sr = sr,target_sr = SAMPLE_RATE)
 
@@ -432,7 +432,7 @@ class Inpaint:
         mel = TRANSFORMS_16000(input_wav)
         return mel
     def show_mel_fn(self, input_audio_path):
-        crop_len = 500 # the full mel cannot be showed due to gradio's Image bug when using tool='sketch'
+        crop_len = 500
         crop_mel = self.gen_mel(input_audio_path)[:,:crop_len]
         color_mel = self.cmap_transform(crop_mel)
         image = Image.fromarray((color_mel*255).astype(np.uint8))
@@ -473,11 +473,11 @@ class Inpaint:
         torch.set_grad_enabled(False)
         mel_img = Image.open(mel_and_mask['image'])
         mask_img = Image.open(mel_and_mask["mask"])
-        show_mel = np.array(mel_img.convert("L"))/255 # 由于展示的mel只展示了一部分，所以需要重新从音频生成mel
+        show_mel = np.array(mel_img.convert("L"))/255
         mask = np.array(mask_img.convert("L"))/255
         mel_bins,mel_len = 80,848
-        input_mel = self.gen_mel_audio(input_audio)[:,:mel_len]# 由于展示的mel只展示了一部分，所以需要重新从音频生成mel
-        mask = np.pad(mask,((0,0),(0,mel_len-mask.shape[1])),mode='constant',constant_values=0)# 将mask填充到原来的mel的大小
+        input_mel = self.gen_mel_audio(input_audio)[:,:mel_len]
+        mask = np.pad(mask,((0,0),(0,mel_len-mask.shape[1])),mode='constant',constant_values=0)
         print(mask.shape,input_mel.shape)
         with torch.no_grad():
             batch = self.make_batch_sd(input_mel,mask,num_samples=1)
@@ -781,7 +781,7 @@ class TargetSoundDetection:
 
 class ConversationBot:
     def __init__(self):
-        print("Initializing AudioChatGPT")
+        print("Initializing AudioGPT")
         self.llm = OpenAI(temperature=0)
         self.t2i = T2I(device="cuda:0")
         self.i2t = ImageCaptioning(device="cuda:1")
@@ -820,19 +820,19 @@ class ConversationBot:
                              "Or Like: Generate a piece of singing voice. Text is xxx, note is xxx, duration is xxx."
                              "The input to this tool should be a comma seperated string of three, representing text, note and duration sequence since User Input Text, Note and Duration Sequence are all provided."),
             Tool(name="Synthesize Speech Given the User Input Text", func=self.tts.inference,
-                 description="useful for when you want to convert a user input text into speech audio it saved it to a file."
+                 description="useful for when you want to convert a user input text into speech and saved it to a file."
                              "The input to this tool should be a string, representing the text used to be converted to speech."),
             Tool(name="Generate Audio From The Image", func=self.i2a.inference,
                  description="useful for when you want to generate an audio based on an image."
-                              "The input to this tool should be a string, representing the image_path. "),
+                              "The input to this tool should be a string, representing the image path. "),
             Tool(name="Generate Text From The Audio", func=self.a2t.inference,
-                 description="useful for when you want to describe an audio in text, receives audio_path as input."
-                             "The input to this tool should be a string, representing the audio_path."),
+                 description="useful for when you want to generate description of an audio or know what is inside the audio."
+                             "The input to this tool should be a string, representing the audio path."),
             Tool(name="Audio Inpainting", func=self.inpaint.show_mel_fn,
-                 description="useful for when you want to inpaint a mel spectrum of an audio and predict this audio, this tool will generate a mel spectrum and you can inpaint it, receives audio_path as input, "
-                             "The input to this tool should be a string, representing the audio_path."),
+                 description="useful for when you want to inpaint or manipulate an audio, this tool receives audio path as input, "
+                             "The input to this tool should be a string, representing the audio path."),
             Tool(name="Transcribe speech", func=self.asr.inference,
-                 description="useful for when you want to know the text corresponding to a human speech, receives audio_path as input."
+                 description="useful for when you want to know the content and transcription corresponding to a human speech, receives audio_path as input."
                              "The input to this tool should be a string, representing the audio_path."),
             Tool(name="Detect the sound event from the audio", func=self.detection.inference,
                  description="useful for when you want to know what event in the audio and the sound event start or end time, receives audio_path as input. "
@@ -959,8 +959,8 @@ if __name__ == '__main__':
     bot = ConversationBot()
     with gr.Blocks(css="#chatbot .overflow-y-auto{height:500px}") as demo:
         with gr.Row():
-            gr.Markdown("## Audio ChatGPT")
-        chatbot = gr.Chatbot(elem_id="chatbot", label="Audio ChatGPT")
+            gr.Markdown("## AudioGPT")
+        chatbot = gr.Chatbot(elem_id="chatbot", label="AudioGPT")
         state = gr.State([])
         with gr.Row():
             with gr.Column(scale=0.7):
