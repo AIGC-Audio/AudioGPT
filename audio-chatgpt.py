@@ -51,16 +51,16 @@ from target_sound_detection.src.models import event_labels
 from target_sound_detection.src.utils import median_filter, decode_with_timestamps
 import clip
 import numpy as np
-AUDIO_CHATGPT_PREFIX = """Audio ChatGPT
-Audio ChatGPT can not directly read audios, but it has a list of tools to finish different speech, audio, and singing voice tasks. Each audio will have a file name formed as "audio/xxx.wav". When talking about audios, Audio ChatGPT is very strict to the file name and will never fabricate nonexistent files. 
-Audio ChatGPT is able to use tools in a sequence, and is loyal to the tool observation outputs rather than faking the audio content and audio file name. It will remember to provide the file name from the last tool observation, if a new audio is generated.
-Human may provide new audios to Audio ChatGPT with a description. The description helps Audio ChatGPT to understand this audio, but Audio ChatGPT should use tools to finish following tasks, rather than directly imagine from the description.
-Overall, Audio ChatGPT is a powerful audio dialogue assistant tool that can help with a wide range of tasks and provide valuable insights and information on a wide range of topics. 
+AUDIO_CHATGPT_PREFIX = """AudioGPT
+AudioGPT can not directly read audios, but it has a list of tools to finish different speech, audio, and singing voice tasks. Each audio will have a file name formed as "audio/xxx.wav". When talking about audios, AudioGPT is very strict to the file name and will never fabricate nonexistent files. 
+AudioGPT is able to use tools in a sequence, and is loyal to the tool observation outputs rather than faking the audio content and audio file name. It will remember to provide the file name from the last tool observation, if a new audio is generated.
+Human may provide new audios to AudioGPT with a description. The description helps AudioGPT to understand this audio, but AudioGPT should use tools to finish following tasks, rather than directly imagine from the description.
+Overall, AudioGPT is a powerful audio dialogue assistant tool that can help with a wide range of tasks and provide valuable insights and information on a wide range of topics. 
 
 TOOLS:
 ------
 
-Audio ChatGPT has access to the following tools:"""
+AudioGPT has access to the following tools:"""
 
 AUDIO_CHATGPT_FORMAT_INSTRUCTIONS = """To use a tool, please use the following format:
 
@@ -781,7 +781,7 @@ class TargetSoundDetection:
 
 class ConversationBot:
     def __init__(self):
-        print("Initializing AudioChatGPT")
+        print("Initializing AudioGPT")
         self.llm = OpenAI(temperature=0)
         self.t2i = T2I(device="cuda:0")
         self.i2t = ImageCaptioning(device="cuda:1")
@@ -959,8 +959,8 @@ if __name__ == '__main__':
     bot = ConversationBot()
     with gr.Blocks(css="#chatbot .overflow-y-auto{height:500px}") as demo:
         with gr.Row():
-            gr.Markdown("## Audio ChatGPT")
-        chatbot = gr.Chatbot(elem_id="chatbot", label="Audio ChatGPT")
+            gr.Markdown("## AudioGPT")
+        chatbot = gr.Chatbot(elem_id="chatbot", label="AudioGPT")
         state = gr.State([])
         with gr.Row():
             with gr.Column(scale=0.7):
