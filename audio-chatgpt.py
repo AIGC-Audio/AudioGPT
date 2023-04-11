@@ -49,6 +49,7 @@ from sound_extraction.utils.wav_io import load_wav, save_wav
 from target_sound_detection.src import models as tsd_models
 from target_sound_detection.src.models import event_labels
 from target_sound_detection.src.utils import median_filter, decode_with_timestamps
+from espnet2.bin.svs_inference import SingingGenerate
 import clip
 import numpy as np
 AUDIO_CHATGPT_PREFIX = """AudioGPT
@@ -332,6 +333,47 @@ class T2S:
         audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
         wavfile.write(audio_filename, self.hp['audio_sample_rate'], wav.astype(np.int16))
         print(f"Processed T2S.run, audio_filename: {audio_filename}")
+        return audio_filename
+
+class t2s_VISinger:
+    def __init__(self, device=None):
+        if device is None:
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print("Initializing VISingere to %s" % device)
+        tag = 'AQuarterMile/opencpop_visinger1'
+        self.model = SingingGenerate.from_pretrained(
+            model_tag=str_or_none(tag),
+            device=device,
+        )
+        phn_dur = [[0.        , 0.219     ],
+            [0.219     , 0.50599998],
+            [0.50599998, 0.71399999],
+            [0.71399999, 1.097     ],
+            [1.097     , 1.28799999],
+            [1.28799999, 1.98300004],
+            [1.98300004, 7.10500002],
+            [7.10500002, 7.60400009]]
+        phn = ['sh', 'i', 'q', 'v', 'n', 'i', 'SP', 'AP']
+        score = [[0, 0.50625, 'sh_i', 58, 'sh_i'], [0.50625, 1.09728, 'q_v', 56, 'q_v'], [1.09728, 1.9832100000000001, 'n_i', 53, 'n_i'], [1.9832100000000001, 7.105360000000001, 'SP', 0, 'SP'], [7.105360000000001, 7.604390000000001, 'AP', 0, 'AP']]
+        tempo = 70
+        tmp = {}
+        tmp["label"] = phn_dur, phn
+        tmp["score"] = tempo, score
+        self.default_inp = tmp
+
+    def inference(self, inputs):
+        val = inputs.split(",")
+        key = ['text', 'notes', 'notes_duration']
+        try: # TODO: input will be update
+            inp = {k: v for k, v in zip(key, val)}
+            wav = self.model(text=inp)["wav"]
+        except:
+            print('Error occurs. Generate default audio sample.\n')
+            inp = self.default_inp
+            wav = self.model(text=inp)["wav"]
+
+        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        soundfile.write(audio_filename, wav, samplerate=self.model.fs)
         return audio_filename
 
 class TTS_OOD:
