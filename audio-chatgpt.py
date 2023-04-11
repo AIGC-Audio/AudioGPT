@@ -821,6 +821,86 @@ class TargetSoundDetection:
         #print(ans)
         return ans
 
+class Speech_Enh_SS_SC:
+    """Speech Enhancement or Separation in single-channel
+    Example usage:
+        enh_model = Speech_Enh_SS("cuda")
+        enh_wav = enh_model.inference("./test_chime4_audio_M05_440C0213_PED_REAL.wav")
+    """
+    def __init__(self, device="cuda", model_name="lichenda/chime4_fasnet_dprnn_tac"):
+        self.model_name = model_name
+        self.device = device
+        print("Initializing ESPnet Enh to %s" % device)
+        self._initialize_model()
+
+    def _initialize_model(self):
+        from espnet_model_zoo.downloader import ModelDownloader
+        from espnet2.bin.enh_inference import SeparateSpeech
+
+        d = ModelDownloader()
+
+        cfg = d.download_and_unpack(self.model_name)
+        self.separate_speech = SeparateSpeech(
+            train_config=cfg["train_config"],
+            model_file=cfg["model_file"],
+            # for segment-wise process on long speech
+            segment_size=2.4,
+            hop_size=0.8,
+            normalize_segment_scale=False,
+            show_progressbar=True,
+            ref_channel=None,
+            normalize_output_wav=True,
+            device=self.device,
+        )
+
+    def inference(self, speech_path, ref_channel=0):
+        speech, sr = soundfile.read(speech_path)
+        speech = speech[:, ref_channel]
+        assert speech.dim() == 1
+
+        enh_speech = self.separate_speech(speech[None, ], fs=sr)
+        if len(enh_speech) == 1:
+            return enh_speech[0]
+        return enh_speech
+
+class Speech_Enh_SS_MC:
+    """Speech Enhancement or Separation in multi-channel"""
+    def __init__(self, device="cuda", model_name=None, ref_channel=4):
+        self.model_name = model_name
+        self.ref_channel = ref_channel
+        self.device = device
+        print("Initializing ESPnet Enh to %s" % device)
+        self._initialize_model()
+
+    def _initialize_model(self):
+        from espnet_model_zoo.downloader import ModelDownloader
+        from espnet2.bin.enh_inference import SeparateSpeech
+
+        d = ModelDownloader()
+
+        cfg = d.download_and_unpack(self.model_name)
+        self.separate_speech = SeparateSpeech(
+            train_config=cfg["train_config"],
+            model_file=cfg["model_file"],
+            # for segment-wise process on long speech
+            segment_size=2.4,
+            hop_size=0.8,
+            normalize_segment_scale=False,
+            show_progressbar=True,
+            ref_channel=self.ref_channel,
+            normalize_output_wav=True,
+            device=self.device,
+        )
+
+    def inference(self, speech_path):
+        speech, sr = soundfile.read(speech_path)
+        speech = speech.T
+
+        enh_speech = self.separate_speech(speech[None, ...], fs=sr)
+        if len(enh_speech) == 1:
+            return enh_speech[0]
+        return enh_speech
+
 class ConversationBot:
     def __init__(self):
         print("Initializing AudioGPT")
