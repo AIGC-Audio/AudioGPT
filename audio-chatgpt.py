@@ -1072,15 +1072,6 @@ class ConversationBot:
                 state = state + [(text, response)]
                 print("Outputs:", state)
                 return gr.Audio.update(value=None), gr.Audio.update(value=output_audio_filename,visible=True), state, gr.Video.update(visible=False)   
-            # elif tool == "Audio Inpainting":
-            #     audio_filename = res['intermediate_steps'][0][0].tool_input
-            #     image_filename = res['intermediate_steps'][0][1]
-            #     print("======>Current memory:\n %s" % self.agent.memory)
-            #     response = res['output']
-            #     output_audio_filename = merge_audio(self.tts.inference(res['output']), audio_filename)
-            #     state = state + [(text, response)]
-            #     print("Outputs:", state)
-            #     return gr.Audio.update(value=None), gr.Audio.update(value=output_audio_filename,visible=True), state, gr.Video.update(visible=False), gr.Image.update(value=image_filename,visible=True), gr.Button.update(visible=True)
             elif tool == "Generate a talking human portrait video given a input Audio":
                 video_filename = res['intermediate_steps'][0][1]
                 print("======>Current memory:\n %s" % self.agent.memory)
@@ -1191,4 +1182,4 @@ if __name__ == '__main__':
         clear_speech.click(lambda: [], None, state)
         clear_speech.click(bot.clear_video, None, outvideo)
 
-        demo.launch(server_name="0.0.0.0", server_port=7862, share=True)
+        demo.launch(server_name="0.0.0.0", server_port=7860, share=True)
