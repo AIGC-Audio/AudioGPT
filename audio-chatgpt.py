@@ -59,28 +59,23 @@ from target_sound_detection.src.models import event_labels
 from target_sound_detection.src.utils import median_filter, decode_with_timestamps
 import clip
 
-AUDIO_CHATGPT_PREFIX = """Audio ChatGPT
-AUdio ChatGPT can not directly read audios, but it has a list of tools to finish different audio synthesis tasks. Each audio will have a file name formed as "audio/xxx.wav". When talking about audios, Audio ChatGPT is very strict to the file name and will never fabricate nonexistent files. 
-AUdio ChatGPT is able to use tools in a sequence, and is loyal to the tool observation outputs rather than faking the audio content and audio file name. It will remember to provide the file name from the last tool observation, if a new audio is generated.
-Human may provide Audio ChatGPT with a description. Audio ChatGPT should generate audios according to this description rather than directly imagine from memory or yourself."
-
-
+AUDIO_CHATGPT_PREFIX = """AudioGPT
+AudioGPT can not directly read audios, but it has a list of tools to finish different speech, audio, and singing voice tasks. Each audio will have a file name formed as "audio/xxx.wav". When talking about audios, AudioGPT is very strict to the file name and will never fabricate nonexistent files. 
+AudioGPT is able to use tools in a sequence, and is loyal to the tool observation outputs rather than faking the audio content and audio file name. It will remember to provide the file name from the last tool observation, if a new audio is generated.
+Human may provide new audios to AudioGPT with a description. The description helps AudioGPT to understand this audio, but AudioGPT should use tools to finish following tasks, rather than directly imagine from the description.
+Overall, AudioGPT is a powerful audio dialogue assistant tool that can help with a wide range of tasks and provide valuable insights and information on a wide range of topics. 
 TOOLS:
 ------
-
-Audio ChatGPT  has access to the following tools:"""
+AudioGPT has access to the following tools:"""
 
 AUDIO_CHATGPT_FORMAT_INSTRUCTIONS = """To use a tool, please use the following format:
-
 ```
 Thought: Do I need to use a tool? Yes
 Action: the action to take, should be one of [{tool_names}]
 Action Input: the input to the action
 Observation: the result of the action
 ```
-
 When you have a response to say to the Human, or if you do not need to use a tool, you MUST use the format:
-
 ```
 Thought: Do I need to use a tool? No
 {ai_prefix}: [your response here]
@@ -89,13 +84,12 @@ Thought: Do I need to use a tool? No
 
 AUDIO_CHATGPT_SUFFIX = """You are very strict to the filename correctness and will never fake a file name if not exists.
 You will remember to provide the audio file name loyally if it's provided in the last tool observation.
-
 Begin!
-
 Previous conversation history:
 {chat_history}
 New input: {input}
 Thought: Do I need to use a tool? {agent_scratchpad}"""
+
 
 
 
@@ -936,6 +930,7 @@ class ConversationBot:
                 agent_kwargs={'prefix': AUDIO_CHATGPT_PREFIX, 'format_instructions': AUDIO_CHATGPT_FORMAT_INSTRUCTIONS, 'suffix': AUDIO_CHATGPT_SUFFIX}, )
 
             return gr.update(visible=False), gr.update(visible=False), gr.update(visible=False), gr.update(visible=True)
+
     def run_text(self, text, state):
         print("===============Running run_text =============")
         print("Inputs:", text, state)
@@ -1121,7 +1116,7 @@ if __name__ == '__main__':
     with gr.Blocks(css="#chatbot .overflow-y-auto{height:500px}") as demo:
         with gr.Row():
             gr.Markdown("## AudioGPT")
-        chatbot = gr.Chatbot(elem_id="chatbot", label="Audio ChatGPT", visible=False) 
+        chatbot = gr.Chatbot(elem_id="chatbot", label="AudioGPT", visible=False) 
         state = gr.State([])
 
         with gr.Row() as select_raws:
@@ -1142,8 +1137,9 @@ if __name__ == '__main__':
 
         with gr.Row():
             outaudio = gr.Audio(visible=False)
-        with gr.Row(scale=0.3, min_width=0):
-            outvideo = gr.Video(visible=False)
+        with gr.Row():
+            with gr.Column(scale=0.3, min_width=0):
+                outvideo = gr.Video(visible=False)
         with gr.Row():
             show_mel = gr.Image(type="filepath",tool='sketch',visible=False)
         with gr.Row():

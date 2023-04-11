@@ -8,6 +8,8 @@ beautifulsoup4==4.10.0
 Cython==0.29.24
 diffusers
 einops==0.3.0
+espnet
+espnet_model_zoo
 g2p-en==2.1.0
 google==3.0.0
 gradio
