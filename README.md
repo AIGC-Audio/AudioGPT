@@ -8,8 +8,6 @@
 
 ## Capabilities
 
-Up-to-date link: https://cdb7b543afd1c8e8.gradio.app
-
 Here we list the capability of AudioGPT at this time. More supported models and tasks are comming soon. For prompt examples, refer to [asset](assets/README.md).
 
 ### Speech
@@ -18,8 +16,8 @@ Here we list the capability of AudioGPT at this time. More supported models and 
 |       Text-to-Speech       | [FastSpeech](), [SyntaSpeech](), [VITS]() |  Yes (WIP)   |
 |       Style Transfer       |         [GenerSpeech]()         |  Yes   |
 |     Speech Recognition     |           [whisper](), [Conformer]()           |  Yes   |
-|     Speech Enhancement     |          [ConvTasNet]()         |  WIP   |
-|     Speech Separation      |          [TF-GridNet]()         |  WIP   |
+|     Speech Enhancement     |          [ConvTasNet]()         |  Yes (WIP)   |
+|     Speech Separation      |          [TF-GridNet]()         |  Yes (WIP)   |
 |     Speech Translation     |          [Multi-decoder]()      |  WIP   |
 |      Mono-to-Binaural      |          [NeuralWarp]()         |  Yes   |
 
@@ -46,15 +44,6 @@ Here we list the capability of AudioGPT at this time. More supported models and 
 |:-------------------------:|:-------------------------------:|:----------:|
 |  Talking Head Synthesis   |          [GeneFace]()           | Yes (WIP)  |
 
-## Internal Version Updates
-4.6 Support Sound Extraction/Detection\
-4.3 Support huggingface demo space\
-4.1 Support Audio inpainting and clean codes\
-3.27 Support Style Transfer/Talking head Synthesis\
-3.23 Support Text-to-Sing\
-3.21 Support Image-to-Audio\
-3.19 Support Speech Recognition\
-3.17 Support Text-to-Audio
 
 ## Todo
 - [x] clean text to sing/speech code
