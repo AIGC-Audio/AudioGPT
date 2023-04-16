@@ -876,13 +876,93 @@ class TargetSoundDetection:
         #print(ans)
         return ans
 
+# class Speech_Enh_SS_SC:
+#     """Speech Enhancement or Separation in single-channel
+#     Example usage:
+#         enh_model = Speech_Enh_SS("cuda")
+#         enh_wav = enh_model.inference("./test_chime4_audio_M05_440C0213_PED_REAL.wav")
+#     """
+#     def __init__(self, device="cuda", model_name="lichenda/chime4_fasnet_dprnn_tac"):
+#         self.model_name = model_name
+#         self.device = device
+#         print("Initializing ESPnet Enh to %s" % device)
+#         self._initialize_model()
+
+#     def _initialize_model(self):
+#         from espnet_model_zoo.downloader import ModelDownloader
+#         from espnet2.bin.enh_inference import SeparateSpeech
+
+#         d = ModelDownloader()
+
+#         cfg = d.download_and_unpack(self.model_name)
+#         self.separate_speech = SeparateSpeech(
+#             train_config=cfg["train_config"],
+#             model_file=cfg["model_file"],
+#             # for segment-wise process on long speech
+#             segment_size=2.4,
+#             hop_size=0.8,
+#             normalize_segment_scale=False,
+#             show_progressbar=True,
+#             ref_channel=None,
+#             normalize_output_wav=True,
+#             device=self.device,
+#         )
+
+#     def inference(self, speech_path, ref_channel=0):
+#         speech, sr = soundfile.read(speech_path)
+#         speech = speech[:, ref_channel]
+#         assert speech.dim() == 1
+
+#         enh_speech = self.separate_speech(speech[None, ], fs=sr)
+#         if len(enh_speech) == 1:
+#             return enh_speech[0]
+#         return enh_speech
+
+# class Speech_Enh_SS_MC:
+#     """Speech Enhancement or Separation in multi-channel"""
+#     def __init__(self, device="cuda", model_name=None, ref_channel=4):
+#         self.model_name = model_name
+#         self.ref_channel = ref_channel
+#         self.device = device
+#         print("Initializing ESPnet Enh to %s" % device)
+#         self._initialize_model()
+
+#     def _initialize_model(self):
+#         from espnet_model_zoo.downloader import ModelDownloader
+#         from espnet2.bin.enh_inference import SeparateSpeech
+
+#         d = ModelDownloader()
+
+#         cfg = d.download_and_unpack(self.model_name)
+#         self.separate_speech = SeparateSpeech(
+#             train_config=cfg["train_config"],
+#             model_file=cfg["model_file"],
+#             # for segment-wise process on long speech
+#             segment_size=2.4,
+#             hop_size=0.8,
+#             normalize_segment_scale=False,
+#             show_progressbar=True,
+#             ref_channel=self.ref_channel,
+#             normalize_output_wav=True,
+#             device=self.device,
+#         )
+
+#     def inference(self, speech_path):
+#         speech, sr = soundfile.read(speech_path)
+#         speech = speech.T
+
+#         enh_speech = self.separate_speech(speech[None, ...], fs=sr)
+#         if len(enh_speech) == 1:
+#             return enh_speech[0]
+#         return enh_speech
+
 class Speech_Enh_SS_SC:
     """Speech Enhancement or Separation in single-channel
     Example usage:
         enh_model = Speech_Enh_SS("cuda")
         enh_wav = enh_model.inference("./test_chime4_audio_M05_440C0213_PED_REAL.wav")
     """
-    def __init__(self, device="cuda", model_name="lichenda/chime4_fasnet_dprnn_tac"):
+    def __init__(self, device="cuda", model_name="espnet/Wangyou_Zhang_chime4_enh_train_enh_conv_tasnet_raw"):
         self.model_name = model_name
         self.device = device
         print("Initializing ESPnet Enh to %s" % device)
@@ -911,20 +991,28 @@ class Speech_Enh_SS_SC:
     def inference(self, speech_path, ref_channel=0):
         speech, sr = soundfile.read(speech_path)
         speech = speech[:, ref_channel]
-        assert speech.dim() == 1
+        # speech = torch.from_numpy(speech)
+        # assert speech.dim() == 1
+        enh_speech = self.separate_speech(speech[None, ...], fs=sr)
+        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        # if len(enh_speech) == 1:
+        soundfile.write(audio_filename, enh_speech[0].squeeze(), samplerate=sr)
+            # return enh_speech[0]
+        # return enh_speech
+        # else: 
+        #     print("############")
+        #     audio_filename_1 = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        #     soundfile.write(audio_filename_1, enh_speech[0].squeeze(), samplerate=sr)
+        #     audio_filename_2 = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        #     soundfile.write(audio_filename_2, enh_speech[1].squeeze(), samplerate=sr)
+        #     audio_filename = merge_audio(audio_filename_1, audio_filename_2)
+        return audio_filename
 
-        enh_speech = self.separate_speech(speech[None, ], fs=sr)
-        if len(enh_speech) == 1:
-            return enh_speech[0]
-        return enh_speech
-
-class Speech_Enh_SS_MC:
-    """Speech Enhancement or Separation in multi-channel"""
-    def __init__(self, device="cuda", model_name=None, ref_channel=4):
+class Speech_SS:
+    def __init__(self, device="cuda", model_name="lichenda/wsj0_2mix_skim_noncausal"):
         self.model_name = model_name
-        self.ref_channel = ref_channel
         self.device = device
-        print("Initializing ESPnet Enh to %s" % device)
+        print("Initializing ESPnet SS to %s" % device)
         self._initialize_model()
 
     def _initialize_model(self):
@@ -942,19 +1030,25 @@ class Speech_Enh_SS_MC:
             hop_size=0.8,
             normalize_segment_scale=False,
             show_progressbar=True,
-            ref_channel=self.ref_channel,
+            ref_channel=None,
             normalize_output_wav=True,
             device=self.device,
         )
 
     def inference(self, speech_path):
         speech, sr = soundfile.read(speech_path)
-        speech = speech.T
-
         enh_speech = self.separate_speech(speech[None, ...], fs=sr)
+        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
         if len(enh_speech) == 1:
-            return enh_speech[0]
-        return enh_speech
+            soundfile.write(audio_filename, enh_speech[0], samplerate=sr)
+        else:
+            # print("############")
+            audio_filename_1 = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+            soundfile.write(audio_filename_1, enh_speech[0].squeeze(), samplerate=sr)
+            audio_filename_2 = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+            soundfile.write(audio_filename_2, enh_speech[1].squeeze(), samplerate=sr)
+            audio_filename = merge_audio(audio_filename_1, audio_filename_2)
+        return audio_filename
 
 class ConversationBot:
     def __init__(self):
@@ -968,6 +1062,9 @@ class ConversationBot:
         self.i2a = I2A(device="cuda:0")
         self.a2t = A2T(device="cpu")
         self.asr = ASR(device="cuda:0")
+        self.SE_SS_SC = Speech_Enh_SS_SC(device="cuda:0")
+        # self.SE_SS_MC = Speech_Enh_SS_MC(device="cuda:0")
+        self.SS = Speech_SS(device="cuda:0")
         self.inpaint = Inpaint(device="cuda:0")
         self.tts_ood = TTS_OOD(device="cpu")
         self.geneface = GeneFace(device="cuda:0")
@@ -1003,6 +1100,19 @@ class ConversationBot:
                 Tool(name="Synthesize Speech Given the User Input Text", func=self.tts.inference,
                      description="useful for when you want to convert a user input text into speech audio it saved it to a file."
                                  "The input to this tool should be a string, representing the text used to be converted to speech."),
+                # Tool(name="Speech Enhancement Or Separation In Single-Channel", func=self.SE_SS_SC.inference,
+                #      description="useful for when you want to enhance the quality of the speech signal by reducing background noise (single-channel), "
+                #                  "or separate each speech from the speech mixture (single-channel), receives audio_path as input."
+                #                  "The input to this tool should be a string, representing the audio_path."),
+                Tool(name="Speech Enhancement In Single-Channel", func=self.SE_SS_SC.inference,
+                     description="useful for when you want to enhance the quality of the speech signal by reducing background noise (single-channel), receives audio_path as input."
+                                 "The input to this tool should be a string, representing the audio_path."),
+                Tool(name="Speech Separation In Single-Channel", func=self.SS.inference,
+                     description="useful for when you want to separate each speech from the speech mixture, receives audio_path as input."
+                                 "The input to this tool should be a string, representing the audio_path."),
+                # Tool(name="Speech Enhancement In Multi-Channel", func=self.SE_SS_MC.inference,
+                #      description="useful for when you want to enhance the quality of the speech signal by reducing background noise (multi-channel), receives audio_path as input."
+                #                  "The input to this tool should be a string, representing the audio_path."),                                 
                 Tool(name="Generate Audio From The Image", func=self.i2a.inference,
                      description="useful for when you want to generate an audio based on an image."
                                   "The input to this tool should be a string, representing the image_path. "),
@@ -1146,13 +1256,13 @@ class ConversationBot:
             print("Inputs:", file, state)
             print("======>Previous memory:\n %s" % self.agent.memory)
             audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
-            audio_load = whisper.load_audio(file.name)
-            soundfile.write(audio_filename, audio_load, samplerate = 16000)
+            # audio_load = whisper.load_audio(file.name)
+            audio_load, sr = soundfile.read(file.name)
+            soundfile.write(audio_filename, audio_load, samplerate = sr)
             description = self.a2t.inference(audio_filename)
             Human_prompt = "\nHuman: provide an audio named {}. The description is: {}. This information helps you to understand this audio, but you should use tools to finish following tasks, " \
                            "rather than directly imagine from my description. If you understand, say \"Received\". \n".format(audio_filename, description)
             AI_prompt = "Received.  "
-            output_audio_filename = self.tts.inference(AI_prompt)
             self.agent.memory.buffer = self.agent.memory.buffer + Human_prompt + 'AI: ' + AI_prompt
             print("======>Current memory:\n %s" % self.agent.memory)
             #state = state + [(f"<audio src=audio_filename controls=controls></audio>*{audio_filename}*", AI_prompt)]
@@ -1177,7 +1287,6 @@ class ConversationBot:
             Human_prompt = "\nHuman: provide a figure named {}. The description is: {}. This information helps you to understand this image, but you should use tools to finish following tasks, " \
                            "rather than directly imagine from my description. If you understand, say \"Received\". \n".format(image_filename, description)
             AI_prompt = "Received.  "
-            output_audio_filename = self.tts.inference(AI_prompt)
             self.agent.memory.buffer = self.agent.memory.buffer + Human_prompt + 'AI: ' + AI_prompt
             print("======>Current memory:\n %s" % self.agent.memory)
             state = state + [(f"![](/file={image_filename})*{image_filename}*", AI_prompt)]
