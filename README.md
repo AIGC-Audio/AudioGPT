@@ -8,7 +8,7 @@
 
 ## Capabilities
 
-Here we list the capability of AudioGPT at this time. More supported models and tasks are comming soon. For prompt examples, refer to [asset](assets/README.md).
+Here we list the capability of AudioGPT at this time. More supported models and tasks are coming soon. For prompt examples, refer to [asset](assets/README.md).
 
 ### Speech
 |            Task            |   Supported Foundation Models   | Status |
