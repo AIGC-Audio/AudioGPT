@@ -58,3 +58,4 @@ We appreciate the open source of the following projects:
 [Hugging Face](https://github.com/huggingface) &#8194;
 [LangChain](https://github.com/hwchase17/langchain) &#8194;
 [Stable Diffusion](https://github.com/CompVis/stable-diffusion) &#8194;
+
