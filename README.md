@@ -8,7 +8,7 @@
 
 ## Capabilities
 
-Here we list the capability of AudioGPT at this time. More supported models and tasks are comming soon. For prompt examples, refer to [asset](assets/README.md).
+Here we list the capability of AudioGPT at this time. More supported models and tasks are coming soon. For prompt examples, refer to [asset](assets/README.md).
 
 ### Speech
 |            Task            |   Supported Foundation Models   | Status |
@@ -55,3 +55,4 @@ We appreciate the open source of the following projects:
 [Hugging Face](https://github.com/huggingface) &#8194;
 [LangChain](https://github.com/hwchase17/langchain) &#8194;
 [Stable Diffusion](https://github.com/CompVis/stable-diffusion) &#8194;
+
