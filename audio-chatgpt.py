@@ -1176,7 +1176,7 @@ class ConversationBot:
                 Tool(name="Generate a talking human portrait video given a input Audio", func=self.geneface.inference,
                      description="useful for when you want to generate a talking human portrait video given a input audio."
                                  "The input to this tool should be a string, representing the audio_path."),
-                Tool(name="Sythesize Binaural Audio From A Mono Audio Input", func=self.binaural.inference,
+                Tool(name="Generate Binaural Audio From A Mono Audio Input", func=self.binaural.inference,
                      description="useful for when you want to transfer your mono audio into binaural audio, receives audio_path as input. "
                                  "The input to this tool should be a string, representing the audio_path. "),
                 Tool(name="Extract Sound Event From Mixture Audio Based On Language Description", func=self.extraction.inference,

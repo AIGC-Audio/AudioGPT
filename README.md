@@ -1,10 +1,10 @@
-# AudioGPT
+# AudioGPT: Understanding and Generating Speech, Music, Sound, and Talking Head
 
-**AudioGPT** connects ChatGPT and a series of Audio Foundation Models to enable **sending** and **receiving** speech, sing, audio, and talking head during chatting.
+[![arXiv](https://img.shields.io/badge/arXiv-Paper-<COLOR>.svg)](https://arxiv.org/abs/2304.12995)
+[![GitHub Stars](https://img.shields.io/github/stars/AIGC-Audio/AudioGPT?style=social)](https://github.com/AIGC-Audio/AudioGPT)
+![visitors](https://visitor-badge.glitch.me/badge?page_id=AIGC-Audio/AudioGPT)
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-blue)](https://huggingface.co/spaces/AIGC-Audio/AudioGPT)
 
-<a src="https://img.shields.io/badge/%F0%9F%A4%97-Open%20in%20Spaces-blue" href="https://huggingface.co/spaces/AIGC-Audio/AudioGPT">
-    <img src="https://img.shields.io/badge/%F0%9F%A4%97-Open%20in%20Spaces-blue" alt="Open in Spaces">
-</a>
 
 ## Capabilities
 
@@ -45,15 +45,12 @@ Here we list the capability of AudioGPT at this time. More supported models and 
 |  Talking Head Synthesis   |          [GeneFace]()           | Yes (WIP)  |
 
 
-## Todo
-- [x] clean text to sing/speech code
-- [ ] merge talking head synthesis into main
-- [x] change audio/video log output
-- [x] support huggingface space
 
 ## Acknowledgement
 We appreciate the open source of the following projects:
 
+[ESPNet](https://github.com/espnet/espnet) &#8194;
+[NATSpeech](https://github.com/NATSpeech/NATSpeech) &#8194;
 [Visual ChatGPT](https://github.com/microsoft/visual-chatgpt) &#8194;
 [Hugging Face](https://github.com/huggingface) &#8194;
 [LangChain](https://github.com/hwchase17/langchain) &#8194;
