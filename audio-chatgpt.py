@@ -1090,13 +1090,13 @@ class ConversationBot:
                     name="Style Transfer", func= self.tts_ood.inference,
                     description="useful for when you want to generate speech samples with styles (e.g., timbre, emotion, and prosody) derived from a reference custom voice."
                                 "Like: Generate a speech with style transferred from this voice. The text is xxx., or speak using the voice of this audio. The text is xxx."
-                                "The input to this tool should be a comma seperated string of two, representing reference audio path and input text."),
+                                "The input to this tool should be a comma separated string of two, representing reference audio path and input text."),
                 Tool(name="Generate Singing Voice From User Input Text, Note and Duration Sequence", func= self.t2s.inference,
                      description="useful for when you want to generate a piece of singing voice (Optional: from User Input Text, Note and Duration Sequence) and save it to a file."
                                  "If Like: Generate a piece of singing voice, the input to this tool should be \"\" since there is no User Input Text, Note and Duration Sequence ."
                                  "If Like: Generate a piece of singing voice. Text: xxx, Note: xxx, Duration: xxx. "
                                  "Or Like: Generate a piece of singing voice. Text is xxx, note is xxx, duration is xxx."
-                                 "The input to this tool should be a comma seperated string of three, representing text, note and duration sequence since User Input Text, Note and Duration Sequence are all provided."),
+                                 "The input to this tool should be a comma separated string of three, representing text, note and duration sequence since User Input Text, Note and Duration Sequence are all provided."),
                 Tool(name="Synthesize Speech Given the User Input Text", func=self.tts.inference,
                      description="useful for when you want to convert a user input text into speech audio it saved it to a file."
                                  "The input to this tool should be a string, representing the text used to be converted to speech."),
@@ -1136,10 +1136,10 @@ class ConversationBot:
                                  "The input to this tool should be a string, representing the audio_path. "),
                 Tool(name="Extract Sound Event From Mixture Audio Based On Language Description", func=self.extraction.inference,
                      description="useful for when you extract target sound from a mixture audio, you can describe the target sound by text, receives audio_path and text as input. "
-                                 "The input to this tool should be a comma seperated string of two, representing mixture audio path and input text."),
+                                 "The input to this tool should be a comma separated string of two, representing mixture audio path and input text."),
                 Tool(name="Target Sound Detection", func=self.TSD.inference,
                      description="useful for when you want to know when the target sound event in the audio happens. You can use language descriptions to instruct the model. receives text description and audio_path as input. "
-                                 "The input to this tool should be a comma seperated string of two, representing audio path and the text description. ")]       
+                                 "The input to this tool should be a comma separated string of two, representing audio path and the text description. ")]       
 
             self.agent = initialize_agent(
                 self.tools,
@@ -1160,13 +1160,13 @@ class ConversationBot:
                     name="Style Transfer", func= self.tts_ood.inference,
                     description="useful for when you want to generate speech samples with styles (e.g., timbre, emotion, and prosody) derived from a reference custom voice."
                                 "Like: Generate a speech with style transferred from this voice. The text is xxx., or speak using the voice of this audio. The text is xxx."
-                                "The input to this tool should be a comma seperated string of two, representing reference audio path and input text."),
+                                "The input to this tool should be a comma separated string of two, representing reference audio path and input text."),
                 Tool(name="Generate Singing Voice From User Input Text, Note and Duration Sequence", func= self.t2s.inference,
                      description="useful for when you want to generate a piece of singing voice (Optional: from User Input Text, Note and Duration Sequence) and save it to a file."
                                  "If Like: Generate a piece of singing voice, the input to this tool should be \"\" since there is no User Input Text, Note and Duration Sequence ."
                                  "If Like: Generate a piece of singing voice. Text: xxx, Note: xxx, Duration: xxx. "
                                  "Or Like: Generate a piece of singing voice. Text is xxx, note is xxx, duration is xxx."
-                                 "The input to this tool should be a comma seperated string of three, representing text, note and duration sequence since User Input Text, Note and Duration Sequence are all provided."),
+                                 "The input to this tool should be a comma separated string of three, representing text, note and duration sequence since User Input Text, Note and Duration Sequence are all provided."),
                 Tool(name="Synthesize Speech Given the User Input Text", func=self.tts.inference,
                      description="useful for when you want to convert a user input text into speech audio it saved it to a file."
                                  "The input to this tool should be a string, representing the text used to be converted to speech."),
@@ -1181,10 +1181,10 @@ class ConversationBot:
                                  "The input to this tool should be a string, representing the audio_path. "),
                 Tool(name="Extract Sound Event From Mixture Audio Based On Language Description", func=self.extraction.inference,
                      description="useful for when you extract target sound from a mixture audio, you can describe the target sound by text, receives audio_path and text as input. "
-                                 "The input to this tool should be a comma seperated string of two, representing mixture audio path and input text."),
+                                 "The input to this tool should be a comma separated string of two, representing mixture audio path and input text."),
                 Tool(name="Target Sound Detection", func=self.TSD.inference,
                      description="useful for when you want to know when the target sound event in the audio happens. You can use language descriptions to instruct the model. receives text description and audio_path as input. "
-                                 "The input to this tool should be a comma seperated string of two, representing audio path and the text description. ")]                
+                                 "The input to this tool should be a comma separated string of two, representing audio path and the text description. ")]                
             self.agent = initialize_agent(
                 self.tools,
                 self.llm,
