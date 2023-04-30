@@ -34,7 +34,7 @@ Currently not every model has repository.
 
 |           Task            |   Supported Foundation Models   | Status |
 |:-------------------------:|:-------------------------------:|:------:|
-|       Text-to-Sing        |         [DiffSinger](), [VISinger]()          |  Yes (WIP)   |
+|       Text-to-Sing        |         [DiffSinger](https://github.com/MoonInTheRiver/DiffSinger), [VISinger](https://github.com/jerryuhoo/VISinger)          |  Yes (WIP)   |
 
 ### Audio
 |          Task          | Supported Foundation Models | Status |
