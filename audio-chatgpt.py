@@ -184,7 +184,7 @@ class T2A:
 
     def select_best_audio(self, prompt, wav_list):
         from wav_evaluation.models.CLAPWrapper import CLAPWrapper
-        clap_model = CLAPWrapper('useful_ckpts/CLAP/CLAP_weights_2022.pth', 'useful_ckpts/CLAP/config.yml',
+        clap_model = CLAPWrapper('text_to_audio/Make_An_Audio/useful_ckpts/CLAP/CLAP_weights_2022.pth', 'text_to_audio/Make_An_Audio/useful_ckpts/CLAP/config.yml',
                                  use_cuda=torch.cuda.is_available())
         text_embeddings = clap_model.get_text_embeddings([prompt])
         score_list = []
@@ -216,7 +216,7 @@ class I2A:
         print("Initializing Make-An-Audio-Image to %s" % device)
         self.device = device
         self.sampler = self._initialize_model('text_to_audio/Make_An_Audio/configs/img_to_audio/img2audio_args.yaml', 'text_to_audio/Make_An_Audio/useful_ckpts/ta54_epoch=000216.ckpt', device=device)
-        self.vocoder = VocoderBigVGAN('text_to_audio/Make_An_Audio_img/vocoder/logs/bigv16k53w',device=device)
+        self.vocoder = VocoderBigVGAN('text_to_audio/Make_An_Audio/vocoder/logs/bigv16k53w',device=device)
 
     def _initialize_model(self, config, ckpt, device):
         config = OmegaConf.load(config)
@@ -420,7 +420,7 @@ class Inpaint:
         print("Initializing Make-An-Audio-inpaint to %s" % device)
         self.device = device
         self.sampler = self._initialize_model_inpaint('text_to_audio/Make_An_Audio/configs/inpaint/txt2audio_args.yaml', 'text_to_audio/Make_An_Audio/useful_ckpts/inpaint7_epoch00047.ckpt')
-        self.vocoder = VocoderBigVGAN('text_to_audio/Make_An_Audio/vocoder/logs/bigv16k53',device=device)
+        self.vocoder = VocoderBigVGAN('text_to_audio/Make_An_Audio/vocoder/logs/bigv16k53w',device=device)
         self.cmap_transform = matplotlib.cm.viridis
 
     def _initialize_model_inpaint(self, config, ckpt):
