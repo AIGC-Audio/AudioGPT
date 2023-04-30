@@ -1,0 +1,68 @@
+model:
+  base_learning_rate: 1.0e-05
+  target: ldm.models.diffusion.ddpm_audio.LatentDiffusion_audio
+  params:
+    linear_start: 0.0015
+    linear_end: 0.0205
+    log_every_t: 100
+    timesteps: 1000
+    loss_type: l1
+    first_stage_key: image
+    cond_stage_key: masked_image
+    image_size: 32      # unused
+    mel_dim: 10         # 80 // 2^3
+    mel_length: 106     # 848 // 2^3
+    channels: 4
+    concat_mode: true
+    monitor: val/loss
+    use_ema: False
+
+    scheduler_config:
+      target: ldm.lr_scheduler.LambdaWarmUpCosineScheduler
+      params:
+        verbosity_interval: 0
+        warm_up_steps: 1000
+        max_decay_steps: 50000
+        lr_start: 0.001
+        lr_max: 0.1
+        lr_min: 0.0001
+
+    unet_config:
+      target: ldm.modules.diffusionmodules.openaimodel.UNetModel
+      params:
+        image_size: 32 # ununsed
+        in_channels: 9 # 4 + 1 + 4
+        out_channels: 4
+        model_channels: 320
+        attention_resolutions:
+        - 1
+        - 2
+        num_res_blocks: 2
+        channel_mult:  # num_down = len(ch_mult)-1
+        - 1
+        - 2
+        num_heads: 8
+        resblock_updown: true
+
+    first_stage_config:
+      target: ldm.models.autoencoder.AutoencoderKL
+      params:
+        embed_dim: 4
+        monitor: val/rec_loss
+        ckpt_path: # /apdcephfs/share_1316500/nlphuang/results/Text_to_audio/ae15/2022-12-15T22-24-00_mixdata_kl_4_tile/epoch=000009-v2.ckpt
+        ddconfig:
+          double_z: true
+          z_channels: 4
+          resolution: 848
+          in_channels: 1
+          out_ch: 1
+          ch: 128
+          ch_mult: [ 1, 2, 2, 4 ]  # num_down = len(ch_mult)-1
+          num_res_blocks: 2
+          attn_resolutions: [106, 212]
+          dropout: 0.0
+        lossconfig:
+          target: torch.nn.Identity
+
+    cond_stage_config: __is_first_stage__
+

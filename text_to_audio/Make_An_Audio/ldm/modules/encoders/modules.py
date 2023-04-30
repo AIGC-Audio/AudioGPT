@@ -9,7 +9,7 @@ from importlib_resources import files
 from ldm.modules.encoders.CLAP.utils import read_config_as_args
 from ldm.modules.encoders.CLAP.clap import TextEncoder
 from ldm.util import default, count_params
-
+import open_clip
 
 class AbstractEncoder(nn.Module):
     def __init__(self):
@@ -309,6 +309,42 @@ class FrozenFLANEmbedder(AbstractEncoder):
 
         z = outputs.last_hidden_state
         return z
+
+    def encode(self, text):
+        return self(text)
+class FrozenGlobalNormOpenCLIPEmbedder(AbstractEncoder):
+    """
+    Uses the OpenCLIP transformer encoder for text
+    """
+    def __init__(self, arch="ViT-H-14", version="laion2b_s32b_b79k", device="cuda", freeze=True, delvisual=True):
+        super().__init__()
+        model, _, preprocess = open_clip.create_model_and_transforms(arch, device=torch.device('cpu'), pretrained=version)
+        if delvisual:
+            del model.visual
+            del preprocess
+        else:
+            self.preprocess = preprocess
+        self.model = model
+
+        self.device = device
+        if freeze:
+            self.freeze()
+
+    def freeze(self):
+        self.model = self.model.eval()
+        for param in self.parameters():
+            param.requires_grad = False
+
+    def forward(self, text):
+        tokens = open_clip.tokenize(text)
+        z = self.model.encode_text(tokens.to(self.device))
+        z /= z.norm(dim=-1, keepdim=True)
+        return z.unsqueeze(1)
+
+    def forward_img(self, image):
+        z = self.model.encode_image(image.to(self.device))
+        z /= z.norm(dim=-1, keepdim=True)
+        return z.unsqueeze(1)
 
     def encode(self, text):
         return self(text)
