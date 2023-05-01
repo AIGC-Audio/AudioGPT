@@ -86,7 +86,6 @@ class AudioCapModel(object):
                 "specaug": False,
                 "sample_method": "beam",
             }
-            print(input_dict)
             out_dict = self.model(input_dict)
             caption_batch = [decode_caption(seq, self.vocabulary) for seq in \
                 out_dict["seq"].cpu().numpy()]
