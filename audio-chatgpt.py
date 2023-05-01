@@ -1052,7 +1052,7 @@ class ConversationBot:
     def __init__(self):
         print("Initializing AudioGPT")
         self.llm = OpenAI(temperature=0)
-        self.t2i = T2I(device="cuda:1")
+        self.t2i = T2I(device="cuda:0")
         self.i2t = ImageCaptioning(device="cuda:0")
         self.t2a = T2A(device="cuda:0")
         self.tts = TTS(device="cpu")
