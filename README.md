@@ -55,7 +55,7 @@ Currently not every model has repository.
 
 
 ## Acknowledgement
-We appreciate the open source of the following projects:
+We appreciate the open source contribution of the following projects:
 
 [ESPNet](https://github.com/espnet/espnet) &#8194;
 [NATSpeech](https://github.com/NATSpeech/NATSpeech) &#8194;
