@@ -18,22 +18,23 @@ Please refer to [run.md](run.md)
 
 Here we list the capability of AudioGPT at this time. More supported models and tasks are coming soon. For prompt examples, refer to [asset](assets/README.md).
 
+Currently not every model has repository.
 ### Speech
 |            Task            |   Supported Foundation Models   | Status |
 |:--------------------------:|:-------------------------------:|:------:|
-|       Text-to-Speech       | [FastSpeech](), [SyntaSpeech](), [VITS]() |  Yes (WIP)   |
-|       Style Transfer       |         [GenerSpeech]()         |  Yes   |
-|     Speech Recognition     |           [whisper](), [Conformer]()           |  Yes   |
+|       Text-to-Speech       | [FastSpeech](https://github.com/ming024/FastSpeech2), [SyntaSpeech](https://github.com/yerfor/SyntaSpeech), [VITS](https://github.com/jaywalnut310/vits) |  Yes (WIP)   |
+|       Style Transfer       |         [GenerSpeech](https://github.com/Rongjiehuang/GenerSpeech)         |  Yes   |
+|     Speech Recognition     |           [whisper](https://github.com/openai/whisper), [Conformer](https://github.com/sooftware/conformer)           |  Yes   |
 |     Speech Enhancement     |          [ConvTasNet]()         |  Yes (WIP)   |
-|     Speech Separation      |          [TF-GridNet]()         |  Yes (WIP)   |
-|     Speech Translation     |          [Multi-decoder]()      |  WIP   |
-|      Mono-to-Binaural      |          [NeuralWarp]()         |  Yes   |
+|     Speech Separation      |          [TF-GridNet](https://arxiv.org/pdf/2211.12433.pdf)         |  Yes (WIP)   |
+|     Speech Translation     |          [Multi-decoder](https://arxiv.org/pdf/2109.12804.pdf)      |  WIP   |
+|      Mono-to-Binaural      |          [NeuralWarp](https://github.com/fdarmon/NeuralWarp)         |  Yes   |
 
 ### Sing
 
 |           Task            |   Supported Foundation Models   | Status |
 |:-------------------------:|:-------------------------------:|:------:|
-|       Text-to-Sing        |         [DiffSinger](), [VISinger]()          |  Yes (WIP)   |
+|       Text-to-Sing        |         [DiffSinger](https://github.com/MoonInTheRiver/DiffSinger), [VISinger](https://github.com/jerryuhoo/VISinger)          |  Yes (WIP)   |
 
 ### Audio
 |          Task          | Supported Foundation Models | Status |
@@ -41,16 +42,16 @@ Here we list the capability of AudioGPT at this time. More supported models and 
 |     Text-to-Audio      |      [Make-An-Audio]()      |  Yes   |
 |    Audio Inpainting    |      [Make-An-Audio]()      |  Yes   |
 |     Image-to-Audio     |      [Make-An-Audio]()      |  Yes   |
-|    Sound Detection     |    [Audio-transformer]()    | Yes    |
-| Target Sound Detection |    [TSDNet]()    |  Yes   |
-|    Sound Extraction    |    [LASSNet]()    |  Yes   |
+|    Sound Detection     |    [Audio-transformer](https://github.com/RetroCirce/HTS-Audio-Transformer)    | Yes    |
+| Target Sound Detection |    [TSDNet](https://github.com/gy65896/TSDNet)    |  Yes   |
+|    Sound Extraction    |    [LASSNet](https://github.com/liuxubo717/LASS)    |  Yes   |
 
 
 ### Talking Head
 
 |           Task            |   Supported Foundation Models   |   Status   |
 |:-------------------------:|:-------------------------------:|:----------:|
-|  Talking Head Synthesis   |          [GeneFace]()           | Yes (WIP)  |
+|  Talking Head Synthesis   |          [GeneFace](https://github.com/yerfor/GeneFace)           | Yes (WIP)  |
 
 
 ## Acknowledgement
