@@ -11,7 +11,30 @@ We provide our implementation and pretrained models as open source in this repos
 
 ## Get Started
 
-Please refer to [run.md](run.md)
+### Create a new environment
+```
+conda create -n audiogpt python=3.8
+```
+
+### Prepare the basic environments
+```
+pip install -r requirements.txt
+```
+
+### Download the foundation models you need
+```
+bash download.sh
+```
+
+### Prepare your private OpenAI private key
+```
+export OPENAI_API_KEY={Your_Private_Openai_Key}
+```
+
+### Start AudioGPT !
+```
+python audio-chatgpt.py
+```
 
 
 ## Capabilities
