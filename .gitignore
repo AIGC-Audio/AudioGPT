@@ -142,3 +142,7 @@ wandb/
 nohup.out
 multirun
 outputs
+run.md
+*.md
+.vscode/tasks.json
+*.sh
