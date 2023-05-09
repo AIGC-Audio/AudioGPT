@@ -3,12 +3,12 @@ import os
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'NeuralSeq'))
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_audio/Make_An_Audio'))
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'text_to_audio/Make_An_Audio'))  # noqa: E501
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'audio_detection'))
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'mono2binaural'))
-import gradio as gr
-import matplotlib
-import librosa
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'mono2binaural'))  # noqa: E501
+import gradio as gr  # noqa: E402
+import matplotlib  # noqa: E402
+import librosa  # noqa: E402
 import torch
 from langchain.agents.initialize import initialize_agent
 from langchain.agents.tools import Tool
