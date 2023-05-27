@@ -34,7 +34,7 @@ omegaconf==2.1.1
 open_clip_torch==2.0.2
 openai
 openai-whisper
-opencv-contrib-python==4.3.0.36
+opencv-contrib-python==4.5.3.56
 praat-parselmouth==0.3.3
 prettytable==3.6.0
 proglog==0.1.9
