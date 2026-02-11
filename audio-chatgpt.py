@@ -90,13 +90,15 @@ def cut_dialogue_history(history_memory, keep_last_n_words = 500):
 
 
 def merge_audio(audio_path_1, audio_path_2):
-    merged_signal = []
     sr_1, signal_1 = wavfile.read(audio_path_1)
     sr_2, signal_2 = wavfile.read(audio_path_2)
-    merged_signal.append(signal_1)
-    merged_signal.append(signal_2)
-    merged_signal = np.hstack(merged_signal)
-    merged_signal = np.asarray(merged_signal, dtype=np.int16)
+    if sr_1 != sr_2:
+        # Resample signal_1 to match sr_2 using linear interpolation
+        duration = len(signal_1) / sr_1
+        target_length = int(duration * sr_2)
+        indices = np.linspace(0, len(signal_1) - 1, target_length)
+        signal_1 = np.interp(indices, np.arange(len(signal_1)), signal_1.astype(float)).astype(np.int16)
+    merged_signal = np.hstack([signal_1, signal_2]).astype(np.int16)
     audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
     wavfile.write(audio_filename, sr_2, merged_signal)
     return audio_filename
