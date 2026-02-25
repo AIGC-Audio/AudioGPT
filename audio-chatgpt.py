@@ -323,7 +323,7 @@ class T2S:
         try:
             inp = {k: v for k, v in zip(key, val)}
             wav = self.pipe.infer_once(inp)
-        except:
+        except Exception:
             print('Error occurs. Generate default audio sample.\n')
             inp = self.default_inp
             wav = self.pipe.infer_once(inp)
@@ -371,7 +371,7 @@ class t2s_VISinger:
         try: # TODO: input will be update
             inp = {k: v for k, v in zip(key, val)}
             wav = self.model(text=inp)["wav"]
-        except:
+        except Exception:
             print('Error occurs. Generate default audio sample.\n')
             inp = self.default_inp
             wav = self.model(text=inp)["wav"]

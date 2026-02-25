@@ -12,7 +12,7 @@ def chunked_worker(worker_id, map_func, args, results_queue=None, init_ctx_func=
             else:
                 res = map_func(*arg)
             results_queue.put((job_idx, res))
-        except:
+        except Exception:
             traceback.print_exc()
             results_queue.put((job_idx, None))
 

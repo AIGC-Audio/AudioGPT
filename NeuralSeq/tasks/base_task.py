@@ -142,7 +142,7 @@ class BaseTask(nn.Module):
             log_outputs['lr'] = self.scheduler.get_lr()
             if isinstance(log_outputs['lr'], list):
                 log_outputs['lr'] = log_outputs['lr'][0]
-        except:
+        except Exception:
             pass
 
         # log_outputs['all_loss'] = total_loss.item()
