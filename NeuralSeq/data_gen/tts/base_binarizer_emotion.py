@@ -232,7 +232,7 @@ class EmotionBinarizer:
                 try:
                     res['phone'] = ph_encoder.encode(ph)
                     res['ph_len'] = len(res['phone'])
-                except:
+                except Exception:
                     traceback.print_exc()
                     raise BinarizationError(f"Empty phoneme")
                 if binarization_args['with_align']:

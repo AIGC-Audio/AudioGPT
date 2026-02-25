@@ -174,7 +174,7 @@ class BaseBinarizer:
             if binarization_args['with_txt']:
                 try:
                     phone_encoded = res['phone'] = encoder.encode(ph)
-                except:
+                except Exception:
                     traceback.print_exc()
                     raise BinarizationError(f"Empty phoneme")
                 if binarization_args['with_align']:

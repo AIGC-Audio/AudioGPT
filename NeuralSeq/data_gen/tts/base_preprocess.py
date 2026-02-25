@@ -138,7 +138,7 @@ class BasePreprocessor:
                 'wav_fn': new_wav_fn, 'wav_align_fn': wav_align_fn,
                 'others': others
             }
-        except:
+        except Exception:
             traceback.print_exc()
             print(f"| Error is caught. item_name: {item_name}.")
             return None

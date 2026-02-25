@@ -285,7 +285,7 @@ def save_p(obj, filename):
 
     try:
         from deepdiff import DeepDiff
-    except:
+    except Exception:
         os.system("pip install deepdiff")
         from deepdiff import DeepDiff
     with open(filename, "wb") as file:

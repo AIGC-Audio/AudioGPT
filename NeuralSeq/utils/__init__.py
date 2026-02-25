@@ -169,7 +169,7 @@ def unpack_dict_to_list(samples):
         for k, v in samples.items():
             try:
                 res[k] = v[i]
-            except:
+            except Exception:
                 pass
         samples_.append(res)
     return samples_

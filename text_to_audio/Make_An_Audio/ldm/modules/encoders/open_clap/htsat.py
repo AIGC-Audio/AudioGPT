@@ -1017,6 +1017,6 @@ def create_htsat_model(audio_cfg, enable_fusion=False, fusion_type='None'):
             )
         
         return model
-    except:
+    except Exception:
         raise RuntimeError(f'Import Model for {audio_cfg.model_name} not found, or the audio cfg parameters are not enough.')
         
